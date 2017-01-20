@@ -1,0 +1,8 @@
+#Ignore Code::Blocks files
+*.depend
+*.layout
+*.cbp
+
+#Ignore bin and obj directories
+bin/
+obj/
