@@ -1,0 +1,12 @@
+JAudioPlayer
+
+Author: Jay Biernat
+
+A personal project currently in progress to create a
+simple audio player using PortAudio (and eventually)
+SDL.
+
+This is an exercise to improve programming skills in
+handling audio files and creating a GUI.  Currently
+an audio player object is created, plays a sine wave
+for five seconds, and then is stopped and destroyed.
