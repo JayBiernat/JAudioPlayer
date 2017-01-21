@@ -16,20 +16,23 @@
 
 int main( void )
 {
-    JAudioPlayer myAudioPlayer;
+    JAudioPlayer *myAudioPlayer;
 
-    JAudioPlayerCreate( &myAudioPlayer );
-    if( myAudioPlayer.state == JPLAYER_FAILED_INITIALIZATION )
+    myAudioPlayer = JAudioPlayerCreate();
+    if( myAudioPlayer == NULL )
+    {
+        printf( "Failed to create audio player\n" );
         return 1;
+    }
     printf( "Audio Player Created\n" );
 
-    JAudioPlayerPlay( &myAudioPlayer );
+    JAudioPlayerPlay( myAudioPlayer );
     printf( "Audio Player Playing\n" );
 
     Sleep( 5000 );
 
     printf( "Stopping Audio Player\n" );
-    JAudioPlayerStop( &myAudioPlayer );
+    JAudioPlayerStop( myAudioPlayer );
     printf( "Audio Player Stopped\n" );
 
     JAudioPlayerDestroy( &myAudioPlayer );

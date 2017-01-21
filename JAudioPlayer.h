@@ -36,11 +36,9 @@ waveTable;
 /** State of the audio player - specifically what the state of the PsStream is */
 typedef enum
 {
-    JPLAYER_FAILED_INITIALIZATION,
     JPLAYER_STOPPED,    /* Producer thread put to sleep */
     JPLAYER_PAUSED,     /* Producer thread in a busy wait state */
-    JPLAYER_PLAYING,
-    JPLAYER_DESTROYED
+    JPLAYER_PLAYING
 }
 JPlayerState;
 
@@ -78,10 +76,9 @@ typedef struct
 JAudioPlayer;
 
 /** @brief Initializes JAudioPlayer
-  * @param audioPlayer Pointer to a JAudioPlayer variable that is to be initialized
-  * @return 0 if JAudioPlayer is initialized correctly, 1 if an error occured
+  * @return Pointer to an initialized JAudioPlayer object, returns NULL on failure
   */
-int JAudioPlayerCreate( JAudioPlayer *audioPlayer );
+JAudioPlayer* JAudioPlayerCreate( void );
 
 /** @brief Starts the playing the audio stream */
 void JAudioPlayerPlay( JAudioPlayer *audioPlayer );
@@ -89,8 +86,11 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer );
 /** @brief Stops the audio stream */
 void JAudioPlayerStop( JAudioPlayer *audioPlayer );
 
-/** @brief Used to destroy JAudioPlayer initialized with JAudioPlayerCreate */
-void JAudioPlayerDestroy( JAudioPlayer *audioPlayer );
+/** @brief Used to destroy JAudioPlayer initialized with JAudioPlayerCreate
+  * @param audioPlayer Pointer to a pointer to a JAudioPlayer structure. Pointer to
+  * the JAudioPlayer will be set to NULL after being destroyed.
+  */
+void JAudioPlayerDestroy( JAudioPlayer **audioPlayer );
 
 /** @brief Routine used by PortAudio for audio handling */
 int paCallback( const void *input,

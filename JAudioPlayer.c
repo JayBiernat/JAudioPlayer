@@ -13,9 +13,14 @@
 #include "portaudio.h"
 #include "JAudioPlayer.h"
 
-int JAudioPlayerCreate( JAudioPlayer *audioPlayer )
+JAudioPlayer* JAudioPlayerCreate( void )
 {
+    JAudioPlayer *audioPlayer = NULL;
     PaError err;
+
+    audioPlayer = (JAudioPlayer*)malloc( sizeof(JAudioPlayer) );
+    if( audioPlayer == NULL )
+        return audioPlayer;
 
     audioPlayer->bTimeToQuit = FALSE;
 
@@ -29,8 +34,8 @@ int JAudioPlayerCreate( JAudioPlayer *audioPlayer )
     if( audioPlayer->audioBuffer.bufferPtr == NULL )
     {
         printf( "Error using malloc\n" );
-        audioPlayer->state = JPLAYER_FAILED_INITIALIZATION;
-        goto error;
+        free( audioPlayer );
+        return NULL;
     }
 
     /* Initialize PortAudio and set up output stream */
@@ -40,8 +45,9 @@ int JAudioPlayerCreate( JAudioPlayer *audioPlayer )
         printf( "Error: Pa_Initialize\n" );
         printf( "Error number: %d\n", err );
         printf( "Error message: %s\n", Pa_GetErrorText( err ) );
-        audioPlayer->state = JPLAYER_FAILED_INITIALIZATION;
-        goto error;
+        free( audioPlayer->audioBuffer.bufferPtr );
+        free( audioPlayer );
+        return NULL;
     }
 
     audioPlayer->outputParameters.device = Pa_GetDefaultOutputDevice();
@@ -65,8 +71,9 @@ int JAudioPlayerCreate( JAudioPlayer *audioPlayer )
         printf( "Error number: %d\n", err );
         printf( "Error message: %s\n", Pa_GetErrorText( err ) );
         Pa_Terminate();
-        audioPlayer->state = JPLAYER_FAILED_INITIALIZATION;
-        goto error;
+        free( audioPlayer->audioBuffer.bufferPtr );
+        free( audioPlayer );
+        return NULL;
     }
     audioPlayer->state = JPLAYER_STOPPED;
 
@@ -80,22 +87,14 @@ int JAudioPlayerCreate( JAudioPlayer *audioPlayer )
     if( audioPlayer->handle_Producer == 0 )
     {
         printf( "Error creating producer thread\n" );
-        goto error;
+        Pa_CloseStream( audioPlayer->stream );
+        Pa_Terminate();
+        free( audioPlayer->audioBuffer.bufferPtr );
+        free( audioPlayer );
+        return NULL;
     }
 
-    return 0;
-
-error:
-    switch( audioPlayer->state )
-    {
-        case JPLAYER_STOPPED:
-            Pa_CloseStream( audioPlayer->stream );
-            audioPlayer->state = JPLAYER_FAILED_INITIALIZATION;
-        case JPLAYER_FAILED_INITIALIZATION: /* Fall through */
-            free( audioPlayer->audioBuffer.bufferPtr );
-    }
-
-    return 1;
+    return audioPlayer;
 }
 
 
@@ -103,12 +102,13 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
 {
     PaError err;
 
+    if( audioPlayer == NULL )
+        return;
+
     switch( audioPlayer->state )
     {
-        case JPLAYER_FAILED_INITIALIZATION:
-            break;
         case JPLAYER_STOPPED:
-        case JPLAYER_PAUSED:
+        case JPLAYER_PAUSED:    /* Fall through for now, will be different later */
             err = Pa_StartStream( audioPlayer->stream );
             if( err != paNoError )
             {
@@ -121,8 +121,6 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
             break;
         case JPLAYER_PLAYING:
             break;
-        case JPLAYER_DESTROYED:
-            break;
     }
     return;
 }
@@ -132,10 +130,11 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
 {
     PaError err;
 
+    if( audioPlayer == NULL )
+        return;
+
     switch( audioPlayer->state )
     {
-        case JPLAYER_FAILED_INITIALIZATION:
-            break;
         case JPLAYER_STOPPED:
         case JPLAYER_PAUSED:
             break;
@@ -149,20 +148,20 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
             }
             else
                 audioPlayer->state = JPLAYER_STOPPED;
-            break;
-        case JPLAYER_DESTROYED:
-            break;
     }
     return;
 }
 
 
-void JAudioPlayerDestroy( JAudioPlayer *audioPlayer )
+void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
 {
+    JAudioPlayer *audioPlayer = *audioPlayerPtr;
+
+    if( audioPlayer == NULL )
+        return;
+
     switch( audioPlayer->state )
     {
-        case JPLAYER_FAILED_INITIALIZATION:
-            break;
         case JPLAYER_PLAYING:
             Pa_StopStream( audioPlayer->stream );
         case JPLAYER_PAUSED:                        /* Fall through all cases */
@@ -173,10 +172,8 @@ void JAudioPlayerDestroy( JAudioPlayer *audioPlayer )
             CloseHandle( audioPlayer->handle_Producer );
             Pa_Terminate();
             free( audioPlayer->audioBuffer.bufferPtr );
-            audioPlayer->audioBuffer.bufferPtr = NULL;
-            audioPlayer->state = JPLAYER_DESTROYED;
-        case JPLAYER_DESTROYED:
-            break;
+            free( audioPlayer );
+            *audioPlayerPtr = NULL;
     }
     return;
 }
