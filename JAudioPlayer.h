@@ -8,6 +8,7 @@
 #ifndef JAUDIOPLAYER_H_INCLUDED
 #define JAUDIOPLAYER_H_INCLUDED
 
+#include <SDL.h>
 #include "portaudio.h"
 #include "math.h"
 
@@ -75,7 +76,17 @@ typedef struct
 }
 JAudioPlayer;
 
-/** @brief Initializes JAudioPlayer
+/** Structure holding window, renderer, and textures for SDL handling of GUI */
+typedef struct
+{
+    SDL_Window      *window;          /* The window to be rendered to */
+    SDL_Renderer    *renderer;        /* Texture Renderer */
+    SDL_Texture     *texture;
+}
+JPlayerGUI;
+
+/** @brief Initializes JAudioPlayer.  JAudioPlayerDestroy must be called to free
+  * resources allocated by JAudioPlayerCreate.
   * @return Pointer to an initialized JAudioPlayer object, returns NULL on failure
   */
 JAudioPlayer* JAudioPlayerCreate( void );
@@ -91,6 +102,19 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer );
   * the JAudioPlayer will be set to NULL after being destroyed.
   */
 void JAudioPlayerDestroy( JAudioPlayer **audioPlayer );
+
+/** @brief Initializes the GUI using SDL.  This function initializes the SDL library,
+  * allowing the use of other SDL functions after JPlayerGUICreate is called.
+  * JPlayerGUIDestroy must be called to free resources and quit the SDL library.
+  * @return Pointer to an initialized JPlayerGUI, returns NULL on failure
+  */
+JPlayerGUI* JPlayerGUICreate( void );
+
+/** @brief Frees resources used by SDL GUI and quits SDL library
+  * @param playerGUI Pointer to a pointer to a JPlayerGUI structure. Pointer to
+  * the JPlayerGUI will be set to NULL after being destroyed.
+  */
+void JPlayerGUIDestroy( JPlayerGUI **playerGUIPtr );
 
 /** @brief Routine used by PortAudio for audio handling */
 int paCallback( const void *input,

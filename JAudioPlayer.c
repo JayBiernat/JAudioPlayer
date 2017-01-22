@@ -10,7 +10,8 @@
 #include <windows.h>
 #include <process.h>
 
-#include "portaudio.h"
+#include <portaudio.h>
+#include <SDL.h>
 #include "JAudioPlayer.h"
 
 JAudioPlayer* JAudioPlayerCreate( void )
@@ -20,7 +21,7 @@ JAudioPlayer* JAudioPlayerCreate( void )
 
     audioPlayer = (JAudioPlayer*)malloc( sizeof(JAudioPlayer) );
     if( audioPlayer == NULL )
-        return audioPlayer;
+        return NULL;
 
     audioPlayer->bTimeToQuit = FALSE;
 
@@ -175,6 +176,131 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
             free( audioPlayer );
             *audioPlayerPtr = NULL;
     }
+    return;
+}
+
+
+JPlayerGUI* JPlayerGUICreate( void )
+{
+    JPlayerGUI  *playerGUI = NULL;
+    const char  defaultPath[] = "assets\\GUI_Placeholder.bmp";
+
+    SDL_Surface *convertedSurface = NULL;  /* The surface converted to the window's pixel format */
+    SDL_Surface *BMPSurface = NULL;        /* Loaded BMP image */
+
+    playerGUI = (JPlayerGUI*)malloc( sizeof(JPlayerGUI) );
+    if( playerGUI == NULL )
+        return NULL;
+
+    if( SDL_Init( SDL_INIT_VIDEO ) < 0 )    /* Initialize SDL library */
+    {
+        printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Load BMP image for Audio Player GUI */
+    BMPSurface = SDL_LoadBMP( defaultPath );
+    if( BMPSurface == NULL )
+    {
+        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Create window */
+    playerGUI->window = SDL_CreateWindow( "Image Processing",
+                                          SDL_WINDOWPOS_UNDEFINED,
+                                          SDL_WINDOWPOS_UNDEFINED,
+                                          BMPSurface->w,
+                                          BMPSurface->h,
+                                          SDL_WINDOW_SHOWN );
+    if( playerGUI->window == NULL )
+    {
+        printf( "ERROR: Window could not be created! SDL Error: %s\n", SDL_GetError() );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Create renderer for window */
+    playerGUI->renderer = SDL_CreateRenderer( playerGUI->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
+    if( playerGUI->renderer == NULL )
+    {
+        printf( "ERROR: Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Create surface formatted for window from loaded BMP surface */
+    convertedSurface = SDL_ConvertSurface( BMPSurface, SDL_GetWindowSurface( playerGUI->window )->format, 0 );
+    if( convertedSurface == NULL )
+    {
+        printf( "ERROR: Unable to convert surface to window format! SDL Error: %s\n", SDL_GetError() );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Creating streaming texture */
+    playerGUI->texture = SDL_CreateTextureFromSurface( playerGUI->renderer, convertedSurface );
+    if( playerGUI->texture == NULL )
+    {
+        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
+        SDL_FreeSurface( convertedSurface );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Free surfaces because we no longer need them */
+    SDL_FreeSurface( convertedSurface );
+    SDL_FreeSurface( BMPSurface );
+
+    /* Clear screen */
+    SDL_SetRenderDrawColor( playerGUI->renderer, 0xFF, 0xFF, 0xFF, 0xFF );
+    SDL_RenderClear( playerGUI->renderer );
+
+    /* Render updated texture */
+    if( SDL_RenderCopy( playerGUI->renderer,
+                        playerGUI->texture,
+                        NULL,
+                        NULL ) < 0 )
+        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+
+    /* Update screen */
+    SDL_RenderPresent( playerGUI->renderer );
+
+    return playerGUI;
+}
+
+
+void JPlayerGUIDestroy( JPlayerGUI **playerGUIPtr )
+{
+    JPlayerGUI *playerGUI = *playerGUIPtr;
+
+    if( playerGUI == NULL )
+        return;
+
+    SDL_DestroyTexture( playerGUI->texture );
+    SDL_DestroyRenderer( playerGUI->renderer );
+    SDL_DestroyWindow( playerGUI->window );
+    SDL_Quit();
+
+    free( playerGUI );
+    *playerGUIPtr = NULL;
+
     return;
 }
 
