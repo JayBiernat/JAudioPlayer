@@ -138,10 +138,8 @@ int main( int argc, char* argv[] )
     {
         while( SDL_PollEvent( &event) != 0 )
         {
-            printf( "Got Event\n" );
             if( event.type == SDL_KEYDOWN )
             {
-                printf( "Got Keyboard event\n" );
                 switch( event.key.keysym.sym )
                 {
                     case SDLK_p:
@@ -158,6 +156,8 @@ int main( int argc, char* argv[] )
                         break;
                 }
             }
+            else if( event.type == SDL_QUIT )
+                bQuit = TRUE;
         }
     }
 
