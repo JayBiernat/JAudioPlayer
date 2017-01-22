@@ -3,10 +3,12 @@ JAudioPlayer
 Author: Jay Biernat
 
 A personal project currently in progress to create a
-simple audio player using PortAudio (and eventually)
-SDL.
+simple audio player using PortAudio and SDL.
 
 This is an exercise to improve programming skills in
-handling audio files and creating a GUI.  Currently
-an audio player object is created, plays a sine wave
-for five seconds, and then is stopped and destroyed.
+handling audio files and creating a GUI.  
+
+Currently an audio player is created with placeholder
+GUI.  A sinewave is played, and using keyboard input
+the user can play and stop the sine wave, and quit
+the audio player.
