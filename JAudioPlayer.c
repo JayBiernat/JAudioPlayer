@@ -210,7 +210,7 @@ JPlayerGUI* JPlayerGUICreate( void )
     }
 
     /* Create window */
-    playerGUI->window = SDL_CreateWindow( "Image Processing",
+    playerGUI->window = SDL_CreateWindow( "Audio Player",
                                           SDL_WINDOWPOS_UNDEFINED,
                                           SDL_WINDOWPOS_UNDEFINED,
                                           BMPSurface->w,

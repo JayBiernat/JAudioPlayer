@@ -68,6 +68,20 @@ int main( int argc, char* argv[] )
                         break;
                 }
             }
+            else if( event.type == SDL_WINDOWEVENT )
+            {
+                if( event.window.event == SDL_WINDOWEVENT_RESTORED )
+                {
+                    /* Redraw default texture */
+                    SDL_RenderClear( myPlayerGUI->renderer );
+                    if( SDL_RenderCopy( myPlayerGUI->renderer,
+                                        myPlayerGUI->texture,
+                                        NULL,
+                                        NULL ) < 0 )
+                        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+                    SDL_RenderPresent( myPlayerGUI->renderer );
+                }
+            }
             else if( event.type == SDL_QUIT )
                 bQuit = TRUE;
         }
