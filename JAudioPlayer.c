@@ -185,7 +185,6 @@ JPlayerGUI* JPlayerGUICreate( void )
     JPlayerGUI  *playerGUI = NULL;
     const char  defaultPath[] = "assets\\GUI_Placeholder.bmp";
 
-    SDL_Surface *convertedSurface = NULL;  /* The surface converted to the window's pixel format */
     SDL_Surface *BMPSurface = NULL;        /* Loaded BMP image */
 
     playerGUI = (JPlayerGUI*)malloc( sizeof(JPlayerGUI) );
@@ -237,25 +236,11 @@ JPlayerGUI* JPlayerGUICreate( void )
         return NULL;
     }
 
-    /* Create surface formatted for window from loaded BMP surface */
-    convertedSurface = SDL_ConvertSurface( BMPSurface, SDL_GetWindowSurface( playerGUI->window )->format, 0 );
-    if( convertedSurface == NULL )
-    {
-        printf( "ERROR: Unable to convert surface to window format! SDL Error: %s\n", SDL_GetError() );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_FreeSurface( BMPSurface );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
-    }
-
     /* Creating streaming texture */
-    playerGUI->texture = SDL_CreateTextureFromSurface( playerGUI->renderer, convertedSurface );
+    playerGUI->texture = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
     if( playerGUI->texture == NULL )
     {
         printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
-        SDL_FreeSurface( convertedSurface );
         SDL_DestroyRenderer( playerGUI->renderer );
         SDL_DestroyWindow( playerGUI->window );
         SDL_FreeSurface( BMPSurface );
@@ -264,8 +249,7 @@ JPlayerGUI* JPlayerGUICreate( void )
         return NULL;
     }
 
-    /* Free surfaces because we no longer need them */
-    SDL_FreeSurface( convertedSurface );
+    /* Free surface because we no longer need them */
     SDL_FreeSurface( BMPSurface );
 
     /* Clear screen */
