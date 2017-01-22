@@ -163,7 +163,7 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
     switch( audioPlayer->state )
     {
         case JPLAYER_PLAYING:
-            Pa_StopStream( audioPlayer->stream );
+            JAudioPlayerStop( audioPlayer );
         case JPLAYER_PAUSED:                        /* Fall through all cases */
         case JPLAYER_STOPPED:
             Pa_CloseStream( audioPlayer->stream );
