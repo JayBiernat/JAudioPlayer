@@ -71,7 +71,7 @@ JAudioPlayer* JAudioPlayerCreate( void )
               FRAMES_PER_BUFFER,
               paNoFlag,
               paCallback,
-              &audioPlayer->audioBuffer );
+              audioPlayer );
     if( err != paNoError )
     {
         printf( "  Error: Pa_OpenStream\n" );
@@ -115,7 +115,6 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
     switch( audioPlayer->state )
     {
         case JPLAYER_STOPPED:
-        case JPLAYER_PAUSED:    /* Fall through for now, will be different later */
             err = Pa_StartStream( audioPlayer->stream );
             if( err != paNoError )
             {
@@ -126,7 +125,28 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
             else
                 audioPlayer->state = JPLAYER_PLAYING;
             break;
+        case JPLAYER_PAUSED:
+            audioPlayer->state = JPLAYER_PLAYING;
+            break;
         case JPLAYER_PLAYING:
+            break;
+    }
+    return;
+}
+
+
+void JAudioPlayerPause( JAudioPlayer *audioPlayer )
+{
+    if( audioPlayer == NULL )
+        return;
+
+    switch( audioPlayer->state )
+    {
+        case JPLAYER_STOPPED:
+        case JPLAYER_PAUSED:
+            break;
+        case JPLAYER_PLAYING:
+            audioPlayer->state = JPLAYER_PAUSED;
             break;
     }
     return;
@@ -143,8 +163,8 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
     switch( audioPlayer->state )
     {
         case JPLAYER_STOPPED:
-        case JPLAYER_PAUSED:
             break;
+        case JPLAYER_PAUSED:
         case JPLAYER_PLAYING:
             err = Pa_StopStream( audioPlayer->stream );
             if( err != paNoError )
@@ -169,9 +189,9 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
 
     switch( audioPlayer->state )
     {
-        case JPLAYER_PLAYING:
+        case JPLAYER_PLAYING:   /* Fall through all cases */
+        case JPLAYER_PAUSED:
             JAudioPlayerStop( audioPlayer );
-        case JPLAYER_PAUSED:                        /* Fall through all cases */
         case JPLAYER_STOPPED:
             Pa_CloseStream( audioPlayer->stream );
             audioPlayer->bTimeToQuit = TRUE;
@@ -423,10 +443,22 @@ int paCallback( const void                      *input,
 {
     (void)input;        /* Prevent unused variable warning */
     float *out = (float*)output;
-    JCircularBuffer *buffer = (JCircularBuffer*)userData;
+    JAudioPlayer *audioPlayer = (JAudioPlayer*)userData;
+
+    JCircularBuffer *buffer = &audioPlayer->audioBuffer;
 
     unsigned framesNeeded = FRAMES_PER_BUFFER;
     unsigned i;
+
+    if( audioPlayer->state == JPLAYER_PAUSED )
+    {
+        for( i=0; i<FRAMES_PER_BUFFER; i++ )
+        {
+            *out++ = 0;
+            *out++ = 0;
+        }
+        return paContinue;
+    }
 
     while( framesNeeded > 0 )
     {

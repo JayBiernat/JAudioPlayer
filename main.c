@@ -69,8 +69,8 @@ int main( int argc, char* argv[] )
                     JAudioPlayerPlay( myAudioPlayer );
                 else if( myPlayerGUI->buttonState == STOP_BUTTON_PRESSED )
                     JAudioPlayerStop( myAudioPlayer );
-                else if( myPlayerGUI->buttonState == PAUSE_BUTTON_PRESSED )     /* Add pause routine later */
-                    JAudioPlayerStop( myAudioPlayer );
+                else if( myPlayerGUI->buttonState == PAUSE_BUTTON_PRESSED )
+                    JAudioPlayerPause( myAudioPlayer );
 
                 myPlayerGUI->buttonState = NO_BUTTON_PRESSED;
             }

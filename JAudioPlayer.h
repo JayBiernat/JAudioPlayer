@@ -129,6 +129,9 @@ JAudioPlayer* JAudioPlayerCreate( void );
 /** @brief Starts the playing the audio stream */
 void JAudioPlayerPlay( JAudioPlayer *audioPlayer );
 
+/** @brief Pauses playback by outputting zeros while stream remains open */
+void JAudioPlayerPause( JAudioPlayer *audioPlayer );
+
 /** @brief Stops the audio stream */
 void JAudioPlayerStop( JAudioPlayer *audioPlayer );
 
