@@ -26,6 +26,9 @@
 #define FRAMES_PER_BUFFER 256
 #define CIRCULAR_BUFFER_LENGTH_SCALING 3
 
+#define WINDOW_HEIGHT 200
+#define WINDOW_WIDTH 400
+
 #define TABLE_SIZE   (200)
 typedef struct
 {
@@ -97,6 +100,7 @@ typedef struct
     SDL_Texture     *texture_play;
     SDL_Texture     *texture_stop;
     SDL_Texture     *texture_pause;
+    SDL_Texture     *texture_tracker;
 }
 JPlayerGUI;
 
@@ -132,9 +136,10 @@ JPlayerGUI* JPlayerGUICreate( void );
   * @param playerGUI Pointer to an initialized JPlayerGUI object
   * @param buttonState A value from enumerated type JPlayerGUIButtonState showing
   * which button is pressed on the player
-  * @param trackerPos A float from 0.0 to 1.0 showing the tracker position on the player
+  * @param audioCompletion A float from 0.0 to 1.0 indicating how much of an audio
+  * file has been played, which will determine the placement of the time tracker
   */
-void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float trackerPos );
+void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float audioCompletion );
 
 /** @brief Frees resources used by SDL GUI and quits SDL library
   * @param playerGUI Pointer to a pointer to a JPlayerGUI structure. Pointer to

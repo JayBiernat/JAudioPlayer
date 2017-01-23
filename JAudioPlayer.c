@@ -40,7 +40,7 @@ JAudioPlayer* JAudioPlayerCreate( void )
     audioPlayer->audioBuffer.bufferPtr = (float*)malloc( sizeof(float) * audioPlayer->audioBuffer.length );
     if( audioPlayer->audioBuffer.bufferPtr == NULL )
     {
-        printf( "Error using malloc\n" );
+        printf( " Error using malloc\n" );
         free( audioPlayer );
         return NULL;
     }
@@ -49,9 +49,9 @@ JAudioPlayer* JAudioPlayerCreate( void )
     err = Pa_Initialize();
     if( err != paNoError )
     {
-        printf( "Error: Pa_Initialize\n" );
-        printf( "Error number: %d\n", err );
-        printf( "Error message: %s\n", Pa_GetErrorText( err ) );
+        printf( "  Error: Pa_Initialize\n" );
+        printf( "  Error number: %d\n", err );
+        printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         free( audioPlayer->audioBuffer.bufferPtr );
         free( audioPlayer );
         return NULL;
@@ -74,9 +74,9 @@ JAudioPlayer* JAudioPlayerCreate( void )
               &audioPlayer->audioBuffer );
     if( err != paNoError )
     {
-        printf( "Error: Pa_OpenStream\n" );
-        printf( "Error number: %d\n", err );
-        printf( "Error message: %s\n", Pa_GetErrorText( err ) );
+        printf( "  Error: Pa_OpenStream\n" );
+        printf( "  Error number: %d\n", err );
+        printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         Pa_Terminate();
         free( audioPlayer->audioBuffer.bufferPtr );
         free( audioPlayer );
@@ -93,7 +93,7 @@ JAudioPlayer* JAudioPlayerCreate( void )
                                                            &audioPlayer->threadID_Producer );
     if( audioPlayer->handle_Producer == 0 )
     {
-        printf( "Error creating producer thread\n" );
+        printf( "  Error creating producer thread\n" );
         Pa_CloseStream( audioPlayer->stream );
         Pa_Terminate();
         free( audioPlayer->audioBuffer.bufferPtr );
@@ -119,9 +119,9 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
             err = Pa_StartStream( audioPlayer->stream );
             if( err != paNoError )
             {
-                printf( "Error: Pa_StartStream\n" );
-                printf( "Error number: %d\n", err );
-                printf( "Error message: %s\n", Pa_GetErrorText( err ) );
+                printf( "  Error: Pa_StartStream\n" );
+                printf( "  Error number: %d\n", err );
+                printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
             }
             else
                 audioPlayer->state = JPLAYER_PLAYING;
@@ -149,9 +149,9 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
             err = Pa_StopStream( audioPlayer->stream );
             if( err != paNoError )
             {
-                printf( "Error: Pa_StopStream\n" );
-                printf( "Error number: %d\n", err );
-                printf( "Error message: %s\n", Pa_GetErrorText( err ) );
+                printf( "  Error: Pa_StopStream\n" );
+                printf( "  Error number: %d\n", err );
+                printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
             }
             else
                 audioPlayer->state = JPLAYER_STOPPED;
@@ -193,8 +193,10 @@ JPlayerGUI* JPlayerGUICreate( void )
     const char  playButtonPath[] = "assets\\PlayButton.bmp";
     const char  stopButtonPath[] = "assets\\StopButton.bmp";
     const char  pauseButtonPath[] = "assets\\PauseButton.bmp";
+    const char  timeTrackerPath[] = "assets\\TimeTracker.bmp";
 
     SDL_Surface *BMPSurface = NULL;        /* Loaded BMP image */
+    SDL_Rect    trackerPos = { 44, 94, 13, 13 };
 
     playerGUI = (JPlayerGUI*)malloc( sizeof(JPlayerGUI) );
     if( playerGUI == NULL )
@@ -202,32 +204,21 @@ JPlayerGUI* JPlayerGUICreate( void )
 
     if( SDL_Init( SDL_INIT_VIDEO ) < 0 )    /* Initialize SDL library */
     {
-        printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
-        free( playerGUI );
-        return NULL;
-    }
-
-    /* Load background and use dimensions to setup window */
-    BMPSurface = SDL_LoadBMP( backgroundPath );
-    if( BMPSurface == NULL )
-    {
-        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
-        SDL_Quit();
+        printf( "  ERROR: SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
         free( playerGUI );
         return NULL;
     }
 
     /* Create window */
-    playerGUI->window = SDL_CreateWindow( "Audio Player",
+    playerGUI->window = SDL_CreateWindow( "J Audio Player",
                                           SDL_WINDOWPOS_UNDEFINED,
                                           SDL_WINDOWPOS_UNDEFINED,
-                                          BMPSurface->w,
-                                          BMPSurface->h,
+                                          WINDOW_WIDTH,
+                                          WINDOW_HEIGHT,
                                           SDL_WINDOW_SHOWN );
     if( playerGUI->window == NULL )
     {
-        printf( "ERROR: Window could not be created! SDL Error: %s\n", SDL_GetError() );
-        SDL_FreeSurface( BMPSurface );
+        printf( "  ERROR: Window could not be created! SDL Error: %s\n", SDL_GetError() );
         SDL_Quit();
         free( playerGUI );
         return NULL;
@@ -237,52 +228,41 @@ JPlayerGUI* JPlayerGUICreate( void )
     playerGUI->renderer = SDL_CreateRenderer( playerGUI->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
     if( playerGUI->renderer == NULL )
     {
-        printf( "ERROR: Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+        printf( "  ERROR: Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
         SDL_DestroyWindow( playerGUI->window );
-        SDL_FreeSurface( BMPSurface );
         SDL_Quit();
         free( playerGUI );
         return NULL;
     }
 
-    /* Creating background texture */
-    playerGUI->texture_background = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
-    if( playerGUI->texture_background == NULL )
+    /* Load background texture */
+    BMPSurface = SDL_LoadBMP( backgroundPath );
+    if( BMPSurface == NULL )
     {
-        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_FreeSurface( BMPSurface );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        printf( "  Warning: Unable to load background image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        playerGUI->texture_background = NULL;
+    }
+    else
+    {
+        playerGUI->texture_background = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+        if( playerGUI->texture_background == NULL )
+            printf( "  Warning: Unable to create background texture! SDL Error: %s\n", SDL_GetError() );
     }
 
-    /* Load three other button textures */
+    /* Load three buttons and tracker textures */
     /* Play Button */
     SDL_FreeSurface( BMPSurface );
     BMPSurface = SDL_LoadBMP( playButtonPath );
     if( BMPSurface == NULL )
     {
-        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
-        SDL_DestroyTexture( playerGUI->texture_background );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        printf( "  Warning: Unable to load play button image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        playerGUI->texture_play = NULL;
     }
-    playerGUI->texture_play = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
-    if( playerGUI->texture_play == NULL )
+    else
     {
-        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
-        SDL_DestroyTexture( playerGUI->texture_background );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_FreeSurface( BMPSurface );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        playerGUI->texture_play = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+        if( playerGUI->texture_play == NULL )
+            printf( "  Warning: Unable to create play button texture! SDL Error: %s\n", SDL_GetError() );
     }
 
     /* Stop Button */
@@ -290,27 +270,14 @@ JPlayerGUI* JPlayerGUICreate( void )
     BMPSurface = SDL_LoadBMP( stopButtonPath );
     if( BMPSurface == NULL )
     {
-        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
-        SDL_DestroyTexture( playerGUI->texture_play );
-        SDL_DestroyTexture( playerGUI->texture_background );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        printf( "  Warning: Unable to load stop button image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        playerGUI->texture_stop = NULL;
     }
-    playerGUI->texture_stop = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
-    if( playerGUI->texture_stop == NULL )
+    else
     {
-        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
-        SDL_DestroyTexture( playerGUI->texture_play );
-        SDL_DestroyTexture( playerGUI->texture_background );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_FreeSurface( BMPSurface );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        playerGUI->texture_stop = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+        if( playerGUI->texture_stop == NULL )
+            printf( "  Warning: Unable to create stop button texture! SDL Error: %s\n", SDL_GetError() );
     }
 
     /* Pause Button */
@@ -318,29 +285,29 @@ JPlayerGUI* JPlayerGUICreate( void )
     BMPSurface = SDL_LoadBMP( pauseButtonPath );
     if( BMPSurface == NULL )
     {
-        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
-        SDL_DestroyTexture( playerGUI->texture_stop );
-        SDL_DestroyTexture( playerGUI->texture_play );
-        SDL_DestroyTexture( playerGUI->texture_background );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        printf( "  Warning: Unable to load pause button image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        playerGUI->texture_pause = NULL;
     }
-    playerGUI->texture_pause = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
-    if( playerGUI->texture_pause == NULL )
+    else
     {
-        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
-        SDL_DestroyTexture( playerGUI->texture_stop );
-        SDL_DestroyTexture( playerGUI->texture_play );
-        SDL_DestroyTexture( playerGUI->texture_background );
-        SDL_DestroyRenderer( playerGUI->renderer );
-        SDL_DestroyWindow( playerGUI->window );
-        SDL_FreeSurface( BMPSurface );
-        SDL_Quit();
-        free( playerGUI );
-        return NULL;
+        playerGUI->texture_pause = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+        if( playerGUI->texture_pause == NULL )
+            printf( "  Warning: Unable to create pause button texture! SDL Error: %s\n", SDL_GetError() );
+    }
+
+    /* Time tracker */
+    SDL_FreeSurface( BMPSurface );
+    BMPSurface = SDL_LoadBMP( timeTrackerPath );
+    if( BMPSurface == NULL )
+    {
+        printf( "  Warning: Unable to load time tracker image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        playerGUI->texture_tracker = NULL;
+    }
+    else
+    {
+        playerGUI->texture_tracker = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+        if( playerGUI->texture_tracker == NULL )
+            printf( "  Warning: Unable to create time tracker texture! SDL Error: %s\n", SDL_GetError() );
     }
     SDL_FreeSurface( BMPSurface );
 
@@ -349,23 +316,28 @@ JPlayerGUI* JPlayerGUICreate( void )
     SDL_RenderClear( playerGUI->renderer );
 
     if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL ) < 0 )   /* background */
-        printf( "ERRROR: There was an error copying background texture! SDL Error: %s\n", SDL_GetError() );
+        printf( "  ERRROR: There was an error copying background texture! SDL Error: %s\n", SDL_GetError() );
     if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonUnpressed, &PlayButtonPos ) < 0 )   /* play button */
-        printf( "ERRROR: There was an error copying play button texture! SDL Error: %s\n", SDL_GetError() );
+        printf( "  ERRROR: There was an error copying play button texture! SDL Error: %s\n", SDL_GetError() );
     if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &ButtonUnpressed, &StopButtonPos ) < 0 )   /* stop button */
-        printf( "ERRROR: There was an error copying stop button texture! SDL Error: %s\n", SDL_GetError() );
+        printf( "  ERRROR: There was an error copying stop button texture! SDL Error: %s\n", SDL_GetError() );
     if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &ButtonUnpressed, &PauseButtonPos ) < 0 )   /* pause button */
-        printf( "ERRROR: There was an error copying pause button texture! SDL Error: %s\n", SDL_GetError() );
+        printf( "  ERRROR: There was an error copying pause button texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_tracker, NULL, &trackerPos ) < 0 )   /* time tracker */
+        printf( "  ERRROR: There was an error copying time tracker texture! SDL Error: %s\n", SDL_GetError() );
 
     SDL_RenderPresent( playerGUI->renderer );
 
     return playerGUI;
 }
 
-void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float trackerPos )
+void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float audioCompletion )
 {
+    SDL_Rect TrackerPos = { 44, 94 + (int)(300.0 * audioCompletion), 13, 13 };
+
     SDL_RenderClear( playerGUI->renderer );
     SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL );
+    SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_tracker, NULL, &TrackerPos );
 
     switch( buttonState )
     {
@@ -404,6 +376,7 @@ void JPlayerGUIDestroy( JPlayerGUI **playerGUIPtr )
     if( playerGUI == NULL )
         return;
 
+    SDL_DestroyTexture( playerGUI->texture_tracker );
     SDL_DestroyTexture( playerGUI->texture_background );
     SDL_DestroyTexture( playerGUI->texture_stop );
     SDL_DestroyTexture( playerGUI->texture_play );
