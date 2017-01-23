@@ -74,11 +74,10 @@ int main( int argc, char* argv[] )
                 {
                     /* Redraw default texture */
                     SDL_RenderClear( myPlayerGUI->renderer );
-                    if( SDL_RenderCopy( myPlayerGUI->renderer,
-                                        myPlayerGUI->texture_background,
-                                        NULL,
-                                        NULL ) < 0 )
-                        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_background, NULL, NULL );
+                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_play, &BUTTON_UNPRESSED, &PLAY_BUTTON );
+                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_stop, &BUTTON_UNPRESSED, &STOP_BUTTON );
+                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_pause, &BUTTON_UNPRESSED, &PAUSE_BUTTON );
                     SDL_RenderPresent( myPlayerGUI->renderer );
                 }
             }
