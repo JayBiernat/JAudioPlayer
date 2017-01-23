@@ -14,6 +14,12 @@
 #include <SDL.h>
 #include "JAudioPlayer.h"
 
+const SDL_Rect BUTTON_UNPRESSED = { 0, 0, 50, 50 };
+const SDL_Rect BUTTON_PRESSED = { 0, 51, 50, 50 };
+const SDL_Rect STOP_BUTTON = { 250, 125, 50, 50 };
+const SDL_Rect PLAY_BUTTON = { 100, 125, 50, 50 };
+const SDL_Rect PAUSE_BUTTON = { 175, 125, 50, 50 };
+
 JAudioPlayer* JAudioPlayerCreate( void )
 {
     JAudioPlayer *audioPlayer = NULL;
@@ -183,7 +189,10 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
 JPlayerGUI* JPlayerGUICreate( void )
 {
     JPlayerGUI  *playerGUI = NULL;
-    const char  defaultPath[] = "assets\\GUI_Placeholder.bmp";
+    const char  backgroundPath[] = "assets\\PlayerBackground.bmp";
+    const char  playButtonPath[] = "assets\\PlayButton.bmp";
+    const char  stopButtonPath[] = "assets\\StopButton.bmp";
+    const char  pauseButtonPath[] = "assets\\PauseButton.bmp";
 
     SDL_Surface *BMPSurface = NULL;        /* Loaded BMP image */
 
@@ -198,8 +207,8 @@ JPlayerGUI* JPlayerGUICreate( void )
         return NULL;
     }
 
-    /* Load BMP image for Audio Player GUI */
-    BMPSurface = SDL_LoadBMP( defaultPath );
+    /* Load background and use dimensions to setup window */
+    BMPSurface = SDL_LoadBMP( backgroundPath );
     if( BMPSurface == NULL )
     {
         printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
@@ -236,9 +245,9 @@ JPlayerGUI* JPlayerGUICreate( void )
         return NULL;
     }
 
-    /* Creating streaming texture */
-    playerGUI->texture = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
-    if( playerGUI->texture == NULL )
+    /* Creating background texture */
+    playerGUI->texture_background = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+    if( playerGUI->texture_background == NULL )
     {
         printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
         SDL_DestroyRenderer( playerGUI->renderer );
@@ -249,21 +258,105 @@ JPlayerGUI* JPlayerGUICreate( void )
         return NULL;
     }
 
-    /* Free surface because we no longer need them */
+    /* Load three other button textures */
+    /* Play Button */
+    SDL_FreeSurface( BMPSurface );
+    BMPSurface = SDL_LoadBMP( playButtonPath );
+    if( BMPSurface == NULL )
+    {
+        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        SDL_DestroyTexture( playerGUI->texture_background );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+    playerGUI->texture_play = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+    if( playerGUI->texture_play == NULL )
+    {
+        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
+        SDL_DestroyTexture( playerGUI->texture_background );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Stop Button */
+    SDL_FreeSurface( BMPSurface );
+    BMPSurface = SDL_LoadBMP( stopButtonPath );
+    if( BMPSurface == NULL )
+    {
+        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        SDL_DestroyTexture( playerGUI->texture_play );
+        SDL_DestroyTexture( playerGUI->texture_background );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+    playerGUI->texture_stop = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+    if( playerGUI->texture_stop == NULL )
+    {
+        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
+        SDL_DestroyTexture( playerGUI->texture_play );
+        SDL_DestroyTexture( playerGUI->texture_background );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+
+    /* Pause Button */
+    SDL_FreeSurface( BMPSurface );
+    BMPSurface = SDL_LoadBMP( pauseButtonPath );
+    if( BMPSurface == NULL )
+    {
+        printf( "\n  Unable to load image default image!\n  SDL_LoadBMP Error: %s\n", SDL_GetError() );
+        SDL_DestroyTexture( playerGUI->texture_stop );
+        SDL_DestroyTexture( playerGUI->texture_play );
+        SDL_DestroyTexture( playerGUI->texture_background );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
+    playerGUI->texture_pause = SDL_CreateTextureFromSurface( playerGUI->renderer, BMPSurface );
+    if( playerGUI->texture_pause == NULL )
+    {
+        printf( "ERROR: Unable to create texture from surface! SDL Error: %s\n", SDL_GetError() );
+        SDL_DestroyTexture( playerGUI->texture_stop );
+        SDL_DestroyTexture( playerGUI->texture_play );
+        SDL_DestroyTexture( playerGUI->texture_background );
+        SDL_DestroyRenderer( playerGUI->renderer );
+        SDL_DestroyWindow( playerGUI->window );
+        SDL_FreeSurface( BMPSurface );
+        SDL_Quit();
+        free( playerGUI );
+        return NULL;
+    }
     SDL_FreeSurface( BMPSurface );
 
-    /* Clear screen */
+    /* Draw audio player GUI */
     SDL_SetRenderDrawColor( playerGUI->renderer, 0xFF, 0xFF, 0xFF, 0xFF );
     SDL_RenderClear( playerGUI->renderer );
 
-    /* Render updated texture */
-    if( SDL_RenderCopy( playerGUI->renderer,
-                        playerGUI->texture,
-                        NULL,
-                        NULL ) < 0 )
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL ) < 0 )   /* background */
+        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &BUTTON_UNPRESSED, &PLAY_BUTTON ) < 0 )   /* play button */
+        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &BUTTON_UNPRESSED, &STOP_BUTTON ) < 0 )   /* stop button */
+        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &BUTTON_UNPRESSED, &PAUSE_BUTTON ) < 0 )   /* pause button */
         printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
 
-    /* Update screen */
     SDL_RenderPresent( playerGUI->renderer );
 
     return playerGUI;
@@ -277,7 +370,10 @@ void JPlayerGUIDestroy( JPlayerGUI **playerGUIPtr )
     if( playerGUI == NULL )
         return;
 
-    SDL_DestroyTexture( playerGUI->texture );
+    SDL_DestroyTexture( playerGUI->texture_background );
+    SDL_DestroyTexture( playerGUI->texture_stop );
+    SDL_DestroyTexture( playerGUI->texture_play );
+    SDL_DestroyTexture( playerGUI->texture_pause );
     SDL_DestroyRenderer( playerGUI->renderer );
     SDL_DestroyWindow( playerGUI->window );
     SDL_Quit();

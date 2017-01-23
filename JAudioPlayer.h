@@ -81,9 +81,15 @@ typedef struct
 {
     SDL_Window      *window;          /* The window to be rendered to */
     SDL_Renderer    *renderer;        /* Texture Renderer */
-    SDL_Texture     *texture;
+    SDL_Texture     *texture_background;
+    SDL_Texture     *texture_play;
+    SDL_Texture     *texture_stop;
+    SDL_Texture     *texture_pause;
 }
 JPlayerGUI;
+
+/** Constant SDL_rect types idenitfying placement of buttons */
+extern const SDL_Rect BUTTON_UNPRESSED, BUTTON_PRESSED, STOP_BUTTON, PLAY_BUTTON, PAUSE_BUTTON;
 
 /** @brief Initializes JAudioPlayer.  JAudioPlayerDestroy must be called to free
   * resources allocated by JAudioPlayerCreate.
