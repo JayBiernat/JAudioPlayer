@@ -14,11 +14,11 @@
 #include <SDL.h>
 #include "JAudioPlayer.h"
 
-const SDL_Rect BUTTON_UNPRESSED = { 0, 0, 50, 50 };
-const SDL_Rect BUTTON_PRESSED = { 0, 51, 50, 50 };
-const SDL_Rect STOP_BUTTON = { 250, 125, 50, 50 };
-const SDL_Rect PLAY_BUTTON = { 100, 125, 50, 50 };
-const SDL_Rect PAUSE_BUTTON = { 175, 125, 50, 50 };
+const SDL_Rect ButtonUnpressed = { 0, 0, 50, 50 };
+const SDL_Rect ButtonPressed = { 0, 51, 50, 50 };
+const SDL_Rect StopButtonPos = { 250, 125, 50, 50 };
+const SDL_Rect PlayButtonPos = { 100, 125, 50, 50 };
+const SDL_Rect PauseButtonPos = { 175, 125, 50, 50 };
 
 JAudioPlayer* JAudioPlayerCreate( void )
 {
@@ -349,17 +349,51 @@ JPlayerGUI* JPlayerGUICreate( void )
     SDL_RenderClear( playerGUI->renderer );
 
     if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL ) < 0 )   /* background */
-        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
-    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &BUTTON_UNPRESSED, &PLAY_BUTTON ) < 0 )   /* play button */
-        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
-    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &BUTTON_UNPRESSED, &STOP_BUTTON ) < 0 )   /* stop button */
-        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
-    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &BUTTON_UNPRESSED, &PAUSE_BUTTON ) < 0 )   /* pause button */
-        printf( "ERRROR: There was an error copying texture! SDL Error: %s\n", SDL_GetError() );
+        printf( "ERRROR: There was an error copying background texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonUnpressed, &PlayButtonPos ) < 0 )   /* play button */
+        printf( "ERRROR: There was an error copying play button texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &ButtonUnpressed, &StopButtonPos ) < 0 )   /* stop button */
+        printf( "ERRROR: There was an error copying stop button texture! SDL Error: %s\n", SDL_GetError() );
+    if( SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &ButtonUnpressed, &PauseButtonPos ) < 0 )   /* pause button */
+        printf( "ERRROR: There was an error copying pause button texture! SDL Error: %s\n", SDL_GetError() );
 
     SDL_RenderPresent( playerGUI->renderer );
 
     return playerGUI;
+}
+
+void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float trackerPos )
+{
+    SDL_RenderClear( playerGUI->renderer );
+    SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL );
+
+    switch( buttonState )
+    {
+        case NO_BUTTON_PRESSED:
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonUnpressed, &PlayButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &ButtonUnpressed, &StopButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &ButtonUnpressed, &PauseButtonPos );
+            break;
+        case PLAY_BUTTON_PRESSED:
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonPressed, &PlayButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &ButtonUnpressed, &StopButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &ButtonUnpressed, &PauseButtonPos );
+            break;
+        case STOP_BUTTON_PRESSED:
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonUnpressed, &PlayButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &ButtonPressed, &StopButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &ButtonUnpressed, &PauseButtonPos );
+            break;
+        case PAUSE_BUTTON_PRESSED:
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonUnpressed, &PlayButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_stop, &ButtonUnpressed, &StopButtonPos );
+            SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_pause, &ButtonPressed, &PauseButtonPos );
+            break;
+    }
+
+    SDL_RenderPresent( playerGUI->renderer );
+
+    return;
 }
 
 

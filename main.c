@@ -72,13 +72,8 @@ int main( int argc, char* argv[] )
             {
                 if( event.window.event == SDL_WINDOWEVENT_RESTORED )
                 {
-                    /* Redraw default texture */
-                    SDL_RenderClear( myPlayerGUI->renderer );
-                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_background, NULL, NULL );
-                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_play, &BUTTON_UNPRESSED, &PLAY_BUTTON );
-                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_stop, &BUTTON_UNPRESSED, &STOP_BUTTON );
-                    SDL_RenderCopy( myPlayerGUI->renderer, myPlayerGUI->texture_pause, &BUTTON_UNPRESSED, &PAUSE_BUTTON );
-                    SDL_RenderPresent( myPlayerGUI->renderer );
+                    /* Redraw default textures */
+                    JPlayerGUIDraw( myPlayerGUI, NO_BUTTON_PRESSED, 0.0 );
                 }
             }
             else if( event.type == SDL_QUIT )

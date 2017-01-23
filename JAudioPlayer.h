@@ -43,6 +43,18 @@ typedef enum
 }
 JPlayerState;
 
+/** An enumerated type to be used in JPlayerGUIDraw to show which button has been pressed
+  * @see JPlayerGUIDraw
+  */
+typedef enum
+{
+    NO_BUTTON_PRESSED,
+    PLAY_BUTTON_PRESSED,
+    PAUSE_BUTTON_PRESSED,
+    STOP_BUTTON_PRESSED
+}
+JPlayerGUIButtonState;
+
 /** Buffer used to transfer audio from file to output stream */
 typedef struct
 {
@@ -89,7 +101,7 @@ typedef struct
 JPlayerGUI;
 
 /** Constant SDL_rect types idenitfying placement of buttons */
-extern const SDL_Rect BUTTON_UNPRESSED, BUTTON_PRESSED, STOP_BUTTON, PLAY_BUTTON, PAUSE_BUTTON;
+extern const SDL_Rect ButtonUnpressed, ButtonPressed, StopButtonPos, PlayButtonPos, PauseButtonPos;
 
 /** @brief Initializes JAudioPlayer.  JAudioPlayerDestroy must be called to free
   * resources allocated by JAudioPlayerCreate.
@@ -115,6 +127,14 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayer );
   * @return Pointer to an initialized JPlayerGUI, returns NULL on failure
   */
 JPlayerGUI* JPlayerGUICreate( void );
+
+/** @brief Renders the audio player GUI
+  * @param playerGUI Pointer to an initialized JPlayerGUI object
+  * @param buttonState A value from enumerated type JPlayerGUIButtonState showing
+  * which button is pressed on the player
+  * @param trackerPos A float from 0.0 to 1.0 showing the tracker position on the player
+  */
+void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float trackerPos );
 
 /** @brief Frees resources used by SDL GUI and quits SDL library
   * @param playerGUI Pointer to a pointer to a JPlayerGUI structure. Pointer to
