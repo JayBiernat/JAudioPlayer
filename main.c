@@ -42,42 +42,42 @@ int main( int argc, char* argv[] )
 
     JAudioPlayerPlay( myAudioPlayer );
     printf( "Audio Player Playing\n" );
-    printf( "  To play, press 'p'\n"
-            "  To stop, press 's'\n"
-            "  To quit, press 'q'\n" );
+    printf( "  To quit, exit out of the J Audio Player window\n" );
 
     while( !bQuit )
     {
         while( SDL_PollEvent( &event) != 0 )
         {
-            if( event.type == SDL_KEYDOWN )
+            JPlayerGUICursorSate cursorState = JPlayerGUIGetCursorState();
+            if( cursorState == CURSOR_ON_BACKGROUND )
+                myPlayerGUI->buttonState = NO_BUTTON_PRESSED;
+
+            if( ( event.type == SDL_MOUSEBUTTONDOWN ) &&
+                ( event.button.button == SDL_BUTTON_LEFT ) )
             {
-                switch( event.key.keysym.sym )
-                {
-                    case SDLK_p:
-                        printf( "Got keyboard signal to play audio\n" );
-                        JAudioPlayerPlay( myAudioPlayer );
-                        break;
-                    case SDLK_s:
-                        printf( "Got keyboard signal to stop audio\n" );
-                        JAudioPlayerStop( myAudioPlayer );
-                        break;
-                    case SDLK_q:
-                        printf( "Got keyboard signal to quit\n" );
-                        bQuit = TRUE;
-                        break;
-                }
+                if( cursorState == CURSOR_ON_PLAY_BUTTON )
+                    myPlayerGUI->buttonState = PLAY_BUTTON_PRESSED;
+                else if( cursorState == CURSOR_ON_PAUSE_BUTTON )
+                    myPlayerGUI->buttonState = PAUSE_BUTTON_PRESSED;
+                else if( cursorState == CURSOR_ON_STOP_BUTTON )
+                    myPlayerGUI->buttonState = STOP_BUTTON_PRESSED;
             }
-            else if( event.type == SDL_WINDOWEVENT )
+            else if( ( event.type == SDL_MOUSEBUTTONUP ) &&
+                     ( event.button.button == SDL_BUTTON_LEFT ) )
             {
-                if( event.window.event == SDL_WINDOWEVENT_RESTORED )
-                {
-                    /* Redraw default textures */
-                    JPlayerGUIDraw( myPlayerGUI, NO_BUTTON_PRESSED, 0.0 );
-                }
+                if( myPlayerGUI->buttonState == PLAY_BUTTON_PRESSED )
+                    JAudioPlayerPlay( myAudioPlayer );
+                else if( myPlayerGUI->buttonState == STOP_BUTTON_PRESSED )
+                    JAudioPlayerStop( myAudioPlayer );
+                else if( myPlayerGUI->buttonState == PAUSE_BUTTON_PRESSED )     /* Add pause routine later */
+                    JAudioPlayerStop( myAudioPlayer );
+
+                myPlayerGUI->buttonState = NO_BUTTON_PRESSED;
             }
             else if( event.type == SDL_QUIT )
                 bQuit = TRUE;
+
+            JPlayerGUIDraw( myPlayerGUI, 0.0 );
         }
     }
 

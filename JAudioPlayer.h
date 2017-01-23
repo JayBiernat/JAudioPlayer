@@ -58,6 +58,17 @@ typedef enum
 }
 JPlayerGUIButtonState;
 
+/** An enumerated type showing which area the cursor is in within the GUI */
+typedef enum
+{
+    CURSOR_ON_BACKGROUND,
+    CURSOR_ON_PLAY_BUTTON,
+    CURSOR_ON_PAUSE_BUTTON,
+    CURSOR_ON_STOP_BUTTON,
+    CURSOR_ON_TRACK
+}
+JPlayerGUICursorSate;
+
 /** Buffer used to transfer audio from file to output stream */
 typedef struct
 {
@@ -101,6 +112,8 @@ typedef struct
     SDL_Texture     *texture_stop;
     SDL_Texture     *texture_pause;
     SDL_Texture     *texture_tracker;
+
+    JPlayerGUIButtonState   buttonState;    /* Which button, if any, is down */
 }
 JPlayerGUI;
 
@@ -139,7 +152,12 @@ JPlayerGUI* JPlayerGUICreate( void );
   * @param audioCompletion A float from 0.0 to 1.0 indicating how much of an audio
   * file has been played, which will determine the placement of the time tracker
   */
-void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float audioCompletion );
+void JPlayerGUIDraw( JPlayerGUI *playerGUI, float audioCompletion );
+
+/** @brief Returns cursor state (which part of the GUI the cursor is over)
+  * @return cursorState Enumerated type JPlayerGUICursorState
+  */
+JPlayerGUICursorSate JPlayerGUIGetCursorState( void );
 
 /** @brief Frees resources used by SDL GUI and quits SDL library
   * @param playerGUI Pointer to a pointer to a JPlayerGUI structure. Pointer to

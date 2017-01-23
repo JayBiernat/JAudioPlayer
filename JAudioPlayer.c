@@ -209,6 +209,8 @@ JPlayerGUI* JPlayerGUICreate( void )
         return NULL;
     }
 
+    playerGUI->buttonState = NO_BUTTON_PRESSED;
+
     /* Create window */
     playerGUI->window = SDL_CreateWindow( "J Audio Player",
                                           SDL_WINDOWPOS_UNDEFINED,
@@ -331,7 +333,8 @@ JPlayerGUI* JPlayerGUICreate( void )
     return playerGUI;
 }
 
-void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, float audioCompletion )
+
+void JPlayerGUIDraw( JPlayerGUI *playerGUI, float audioCompletion )
 {
     SDL_Rect TrackerPos = { 44, 94 + (int)(300.0 * audioCompletion), 13, 13 };
 
@@ -339,7 +342,7 @@ void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, f
     SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL );
     SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_tracker, NULL, &TrackerPos );
 
-    switch( buttonState )
+    switch( playerGUI->buttonState )
     {
         case NO_BUTTON_PRESSED:
             SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_play, &ButtonUnpressed, &PlayButtonPos );
@@ -366,6 +369,25 @@ void JPlayerGUIDraw( JPlayerGUI *playerGUI, JPlayerGUIButtonState buttonState, f
     SDL_RenderPresent( playerGUI->renderer );
 
     return;
+}
+
+
+JPlayerGUICursorSate JPlayerGUIGetCursorState( void )
+{
+    int x, y;
+
+    SDL_GetMouseState( &x, &y );
+
+    if( x >= 100 && x < 150 && y >= 125 && y < 175 )
+        return CURSOR_ON_PLAY_BUTTON;
+    else if( x >= 175 && x < 225 && y >=125 && y < 175 )
+        return CURSOR_ON_PAUSE_BUTTON;
+    else if( x >= 250 && x < 300 && y >= 125 && y < 175 )
+        return CURSOR_ON_STOP_BUTTON;
+    else if( x >= 50 && x < 350 && y >= 98 && y < 102 )
+        return CURSOR_ON_TRACK;
+    else
+        return CURSOR_ON_BACKGROUND;
 }
 
 
