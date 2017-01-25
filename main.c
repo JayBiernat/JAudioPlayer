@@ -23,8 +23,15 @@ int main( int argc, char* argv[] )
     SDL_Event       event;
     int             bQuit = FALSE;
 
+    if( argc != 2 )
+    {
+        printf( "ERROR: Not enough input arguments\n"
+                "Usage: %s audio_file\n", argv[0] );
+        return 1;
+    }
+
     printf( "Creating audio player...\n" );
-    myAudioPlayer = JAudioPlayerCreate();
+    myAudioPlayer = JAudioPlayerCreate( argv[1] );
     if( myAudioPlayer == NULL )
     {
         printf( "Failed to create audio player!\n" );

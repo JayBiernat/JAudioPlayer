@@ -12,15 +12,16 @@
 
 #include <portaudio.h>
 #include <SDL.h>
+#include "sndfile.h"
 #include "JAudioPlayer.h"
 
 const SDL_Rect ButtonUnpressed = { 0, 0, 50, 50 };
-const SDL_Rect ButtonPressed = { 0, 51, 50, 50 };
+const SDL_Rect ButtonPressed = { 0, 50, 50, 50 };
 const SDL_Rect StopButtonPos = { 250, 125, 50, 50 };
 const SDL_Rect PlayButtonPos = { 100, 125, 50, 50 };
 const SDL_Rect PauseButtonPos = { 175, 125, 50, 50 };
 
-JAudioPlayer* JAudioPlayerCreate( void )
+JAudioPlayer* JAudioPlayerCreate( const char *filePath )
 {
     JAudioPlayer *audioPlayer = NULL;
     PaError err;
@@ -31,16 +32,26 @@ JAudioPlayer* JAudioPlayerCreate( void )
 
     audioPlayer->bTimeToQuit = FALSE;
 
+    /* Open soundfile and fill in sfInfo */
+    audioPlayer->sfInfo.format = 0;     /* sndfile API requires format be set to zero before calling sf_open */
+    audioPlayer->sfPtr = sf_open( filePath, SFM_READ, &audioPlayer->sfInfo );
+    if( audioPlayer->sfPtr == NULL )
+    {
+        printf( "  Error: Could not open soundfile: %s\n", filePath );
+        free( audioPlayer );
+        return NULL;
+    }
+
     /* Set up audioBuffer */
-    audioPlayer->audioBuffer.bufferPtr = NULL;
-    audioPlayer->audioBuffer.length = NUM_CHANNELS * FRAMES_PER_BUFFER * CIRCULAR_BUFFER_LENGTH_SCALING;
+    audioPlayer->audioBuffer.length_in_frames = FRAMES_PER_BLOCK * CIRCULAR_BUFFER_LENGTH_SCALING;
     audioPlayer->audioBuffer.head = 0;
     audioPlayer->audioBuffer.tail = 0;
     audioPlayer->audioBuffer.availableFrames = 0;
-    audioPlayer->audioBuffer.bufferPtr = (float*)malloc( sizeof(float) * audioPlayer->audioBuffer.length );
+    audioPlayer->audioBuffer.bufferPtr = (float*)malloc( sizeof(float) * audioPlayer->audioBuffer.length_in_frames * audioPlayer->sfInfo.channels );
     if( audioPlayer->audioBuffer.bufferPtr == NULL )
     {
-        printf( " Error using malloc\n" );
+        printf( "  Error using malloc\n" );
+        sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
     }
@@ -53,12 +64,13 @@ JAudioPlayer* JAudioPlayerCreate( void )
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         free( audioPlayer->audioBuffer.bufferPtr );
+        sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
     }
 
     audioPlayer->outputParameters.device = Pa_GetDefaultOutputDevice();
-    audioPlayer->outputParameters.channelCount = NUM_CHANNELS;       /* STEREO output */
+    audioPlayer->outputParameters.channelCount = audioPlayer->sfInfo.channels;
     audioPlayer->outputParameters.sampleFormat = paFloat32;          /* 32 bit floating point output */
     audioPlayer->outputParameters.suggestedLatency = Pa_GetDeviceInfo( audioPlayer->outputParameters.device )->defaultLowOutputLatency;
     audioPlayer->outputParameters.hostApiSpecificStreamInfo = NULL;
@@ -67,8 +79,8 @@ JAudioPlayer* JAudioPlayerCreate( void )
               &audioPlayer->stream,
               NULL, /* no input */
               &audioPlayer->outputParameters,
-              SAMPLE_RATE,
-              FRAMES_PER_BUFFER,
+              audioPlayer->sfInfo.samplerate,
+              FRAMES_PER_BLOCK,
               paNoFlag,
               paCallback,
               audioPlayer );
@@ -79,6 +91,7 @@ JAudioPlayer* JAudioPlayerCreate( void )
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         Pa_Terminate();
         free( audioPlayer->audioBuffer.bufferPtr );
+        sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
     }
@@ -97,6 +110,7 @@ JAudioPlayer* JAudioPlayerCreate( void )
         Pa_CloseStream( audioPlayer->stream );
         Pa_Terminate();
         free( audioPlayer->audioBuffer.bufferPtr );
+        sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
     }
@@ -199,6 +213,7 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
             CloseHandle( audioPlayer->handle_Producer );
             Pa_Terminate();
             free( audioPlayer->audioBuffer.bufferPtr );
+            sf_close( audioPlayer->sfPtr );
             free( audioPlayer );
             *audioPlayerPtr = NULL;
     }
@@ -447,15 +462,16 @@ int paCallback( const void                      *input,
 
     JCircularBuffer *buffer = &audioPlayer->audioBuffer;
 
-    unsigned framesNeeded = FRAMES_PER_BUFFER;
-    unsigned i;
+    const int   channels = audioPlayer->sfInfo.channels;
+    unsigned    framesNeeded = FRAMES_PER_BLOCK;
+    unsigned    i, j;
 
     if( audioPlayer->state == JPLAYER_PAUSED )
     {
-        for( i=0; i<FRAMES_PER_BUFFER; i++ )
+        for( i=0; i<FRAMES_PER_BLOCK; i++ )
         {
-            *out++ = 0;
-            *out++ = 0;
+            for( j=0; j<channels; j++ )
+                *out++ = 0;
         }
         return paContinue;
     }
@@ -469,10 +485,13 @@ int paCallback( const void                      *input,
                 framesToConsume = framesNeeded;
             for( i=0; i<framesToConsume; i++ )
             {
-                *out++ = *( buffer->bufferPtr + buffer->tail++ );
-                *out++ = *( buffer->bufferPtr + buffer->tail++ );
-                if( buffer->tail >= buffer->length )
-                    buffer->tail -= buffer->length;
+                for( j=0; j<channels; j++ )
+                {
+                    *out++ = *(buffer->bufferPtr + (buffer->tail * channels) + j);
+                }
+                buffer->tail++;
+                if( buffer->tail >= buffer->length_in_frames )
+                    buffer->tail = 0;
                 __sync_fetch_and_sub( &buffer->availableFrames, 1 );
             }
             framesNeeded -= framesToConsume;
@@ -491,31 +510,56 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
 {
     JAudioPlayer    *audioPlayer = (JAudioPlayer*)threadArg;
     JCircularBuffer *buffer = &audioPlayer->audioBuffer;
-    const unsigned  MAX_PRODUCED_FRAMES = buffer->length / NUM_CHANNELS;
-    waveTable       sineWave;
-    unsigned        i;
+    const int       channels = audioPlayer->sfInfo.channels;
 
-    /* Initialize sine waveTable */
-    for( i=0; i<TABLE_SIZE; i++ )
-    {
-        sineWave.wave[i] = (float) (0.8 * sin( ((float)i/(float)TABLE_SIZE) * PI * 2. ));
-    }
-    sineWave.phase = 0;
+    const unsigned  MAX_PRODUCED_FRAMES = buffer->length_in_frames;
+    sf_count_t      framesReadFromFile;
 
     while( !audioPlayer->bTimeToQuit )
     {
         if( buffer->availableFrames < MAX_PRODUCED_FRAMES )
         {
             unsigned framesToProduce = ( MAX_PRODUCED_FRAMES - buffer->availableFrames );
-            for( i=0; i<framesToProduce; i++ )
+            if( buffer->head + framesToProduce > MAX_PRODUCED_FRAMES )
             {
-                *( buffer->bufferPtr + buffer->head++ ) = sineWave.wave[ sineWave.phase ];  /* Left and right channels have same phase */
-                *( buffer->bufferPtr + buffer->head++ ) = sineWave.wave[ sineWave.phase++ ];
-                if( buffer->head >= buffer->length )
-                    buffer->head -= buffer->length;     /* Wrap index */
-                if( sineWave.phase >= TABLE_SIZE )
-                    sineWave.phase -= TABLE_SIZE;       /* Wrap index */
-                __sync_fetch_and_add( &(buffer->availableFrames), 1 );  /* Protect against race condition with atomic operation */
+                framesToProduce = MAX_PRODUCED_FRAMES - buffer->head;
+                framesReadFromFile = sf_readf_float( audioPlayer->sfPtr, buffer->bufferPtr + (buffer->head * channels), (sf_count_t)framesToProduce );
+
+                if( framesReadFromFile < framesToProduce )  /* Check frames read from file, produce silence after end of file */
+                {
+                    unsigned    silentFramesToProduce = framesToProduce - framesReadFromFile;
+                    float       *ptr = buffer->bufferPtr + (buffer->head + framesReadFromFile) * channels;
+                    unsigned    i, j;
+
+                    for( i=0; i<silentFramesToProduce; i++ )
+                    {
+                        for( j=0; j<channels; j++ )
+                            *ptr++ = 0;
+                    }
+                }
+                __sync_fetch_and_add( &(buffer->availableFrames), framesToProduce );  /* Protect against race condition with atomic operation */
+                buffer->head = 0;
+            }
+            else
+            {
+                framesReadFromFile = sf_readf_float( audioPlayer->sfPtr, buffer->bufferPtr + (buffer->head * channels), framesToProduce );
+
+                if( framesReadFromFile < framesToProduce )  /* Check frames read from file, produce silence after end of file */
+                {
+                    unsigned    silentFramesToProduce = framesToProduce - framesReadFromFile;
+                    float       *ptr = buffer->bufferPtr + (buffer->head + framesReadFromFile) * channels;
+                    unsigned    i, j;
+
+                    for( i=0; i<silentFramesToProduce; i++ )
+                    {
+                        for( j=0; j<channels; j++ )
+                            *ptr++ = 0;
+                    }
+                }
+                __sync_fetch_and_add( &(buffer->availableFrames), framesToProduce );  /* Protect against race condition with atomic operation */
+                buffer->head += framesToProduce;
+                if( buffer->head >= MAX_PRODUCED_FRAMES )
+                    buffer->head = 0;
             }
         }
     }

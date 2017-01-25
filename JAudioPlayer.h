@@ -9,38 +9,24 @@
 #define JAUDIOPLAYER_H_INCLUDED
 
 #include <SDL.h>
-#include "portaudio.h"
-#include "math.h"
+#include <portaudio.h>
+#include "sndfile.h"
 
 #ifndef TRUE
 #def TRUE 1
 #def FALSE 0
 #endif
 
-#ifndef PI
-#define PI 3.1415926536
-#endif // PI
-
-#define SAMPLE_RATE 44100
-#define NUM_CHANNELS 2
-#define FRAMES_PER_BUFFER 256
+#define FRAMES_PER_BLOCK 256
 #define CIRCULAR_BUFFER_LENGTH_SCALING 3
 
 #define WINDOW_HEIGHT 200
 #define WINDOW_WIDTH 400
 
-#define TABLE_SIZE   (200)
-typedef struct
-{
-    float wave[TABLE_SIZE];
-    int phase;
-}
-waveTable;
-
-/** State of the audio player - specifically what the state of the PsStream is */
+/** State of the audio player - specifically what the state of the PaStream is */
 typedef enum
 {
-    JPLAYER_STOPPED,    /* Producer thread put to sleep */
+    JPLAYER_STOPPED,    /* Producer thread put to sleep - not yet implemented */
     JPLAYER_PAUSED,     /* Producer thread in a busy wait state */
     JPLAYER_PLAYING
 }
@@ -72,10 +58,10 @@ JPlayerGUICursorSate;
 /** Buffer used to transfer audio from file to output stream */
 typedef struct
 {
-    float   *bufferPtr;
-    unsigned head;
-    unsigned tail;
-    unsigned length;    /* In samples (floats) */
+    float       *bufferPtr;
+    unsigned    head;       /* Track position of head and tail in frames */
+    unsigned    tail;
+    unsigned    length_in_frames;
     volatile unsigned availableFrames;  /* Frames available for output */
 }
 JCircularBuffer;
@@ -92,10 +78,14 @@ typedef struct
     PaStreamParameters  outputParameters;
     PaStream            *stream;
 
+    /* sndfile API variables */
+    SF_INFO          sfInfo;
+    SNDFILE         *sfPtr;
+
     /* Buffer producer thread variables */
-    HANDLE      handle_Producer;
-    unsigned    threadID_Producer;
-    volatile int  bTimeToQuit;        /* Flag signal time for thread shutdown */
+    HANDLE          handle_Producer;
+    unsigned        threadID_Producer;
+    volatile int    bTimeToQuit;        /* Flag signal time for thread shutdown */
 
     JCircularBuffer audioBuffer;
     JPlayerState    state;
@@ -124,7 +114,7 @@ extern const SDL_Rect ButtonUnpressed, ButtonPressed, StopButtonPos, PlayButtonP
   * resources allocated by JAudioPlayerCreate.
   * @return Pointer to an initialized JAudioPlayer object, returns NULL on failure
   */
-JAudioPlayer* JAudioPlayerCreate( void );
+JAudioPlayer* JAudioPlayerCreate( const char *filePath );
 
 /** @brief Starts the playing the audio stream */
 void JAudioPlayerPlay( JAudioPlayer *audioPlayer );
