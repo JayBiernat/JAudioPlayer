@@ -53,6 +53,16 @@ int main( int argc, char* argv[] )
 
     while( !bQuit )
     {
+        /* If end of audio file has been reached, stop stream and reset GUI */
+        if( myAudioPlayer->seekFrames >= myAudioPlayer->sfInfo.frames )
+        {
+            myPlayerGUI->buttonState = NO_BUTTON_PRESSED;
+            myPlayerGUI->seekerEngaged = FALSE;
+            JAudioPlayerStop( myAudioPlayer );
+            JPlayerGUIDraw( myPlayerGUI, 0.0 );
+            continue;
+        }
+
         while( SDL_PollEvent( &event) != 0 )
         {
             JPlayerGUICursorSate cursorState = JPlayerGUIGetCursorState();
