@@ -264,6 +264,7 @@ JPlayerGUI* JPlayerGUICreate( void )
     }
 
     playerGUI->buttonState = NO_BUTTON_PRESSED;
+    playerGUI->seekerEngaged = FALSE;
 
     /* Create window */
     playerGUI->window = SDL_CreateWindow( "J Audio Player",
@@ -438,7 +439,7 @@ JPlayerGUICursorSate JPlayerGUIGetCursorState( void )
         return CURSOR_ON_PAUSE_BUTTON;
     else if( x >= 250 && x < 300 && y >= 125 && y < 175 )
         return CURSOR_ON_STOP_BUTTON;
-    else if( x >= 50 && x < 350 && y >= 98 && y < 102 )
+    else if( x >= 49 && x < 349 && y >= 96 && y < 102 )
         return CURSOR_ON_TRACK;
     else
         return CURSOR_ON_BACKGROUND;

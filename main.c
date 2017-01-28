@@ -62,12 +62,23 @@ int main( int argc, char* argv[] )
             if( ( event.type == SDL_MOUSEBUTTONDOWN ) &&
                 ( event.button.button == SDL_BUTTON_LEFT ) )
             {
-                if( cursorState == CURSOR_ON_PLAY_BUTTON )
-                    myPlayerGUI->buttonState = PLAY_BUTTON_PRESSED;
-                else if( cursorState == CURSOR_ON_PAUSE_BUTTON )
-                    myPlayerGUI->buttonState = PAUSE_BUTTON_PRESSED;
-                else if( cursorState == CURSOR_ON_STOP_BUTTON )
-                    myPlayerGUI->buttonState = STOP_BUTTON_PRESSED;
+                switch( cursorState )
+                {
+                    case CURSOR_ON_PLAY_BUTTON:
+                        myPlayerGUI->buttonState = PLAY_BUTTON_PRESSED;
+                        break;
+                    case CURSOR_ON_PAUSE_BUTTON:
+                        myPlayerGUI->buttonState = PAUSE_BUTTON_PRESSED;
+                        break;
+                    case CURSOR_ON_STOP_BUTTON:
+                        myPlayerGUI->buttonState = STOP_BUTTON_PRESSED;
+                        break;
+                    case CURSOR_ON_TRACK:
+                        myPlayerGUI->seekerEngaged = TRUE;
+                        break;
+                    case CURSOR_ON_BACKGROUND:
+                        break;
+                }
             }
             else if( ( event.type == SDL_MOUSEBUTTONUP ) &&
                      ( event.button.button == SDL_BUTTON_LEFT ) )
@@ -80,11 +91,32 @@ int main( int argc, char* argv[] )
                     JAudioPlayerPause( myAudioPlayer );
 
                 myPlayerGUI->buttonState = NO_BUTTON_PRESSED;
+
+                if( myPlayerGUI->seekerEngaged )
+                {
+                    int x;
+                    sf_count_t frameOffset;
+
+                    SDL_GetMouseState( &x, NULL );
+                    x = ( x > 349 ? 349 : x );
+                    x = ( x < 49 ? 49 : x );
+
+                    frameOffset = (sf_count_t)( ((float)(x - 49) / 300.0) * (float)myAudioPlayer->sfInfo.frames );
+                    JAudioPlayerSeek( myAudioPlayer, frameOffset, SEEK_SET );
+                    myPlayerGUI->seekerEngaged = FALSE;
+                }
             }
             else if( event.type == SDL_QUIT )
                 bQuit = TRUE;
         }
-        JPlayerGUIDraw( myPlayerGUI, (float)myAudioPlayer->seekFrames / (float)myAudioPlayer->sfInfo.frames );
+        if( myPlayerGUI->seekerEngaged )
+        {
+            int x;
+            SDL_GetMouseState( &x, NULL );
+            JPlayerGUIDraw( myPlayerGUI, (float)(x - 49) / 300.0 );
+        }
+        else
+            JPlayerGUIDraw( myPlayerGUI, (float)myAudioPlayer->seekFrames / (float)myAudioPlayer->sfInfo.frames );
     }
 
     JPlayerGUIDestroy( &myPlayerGUI );

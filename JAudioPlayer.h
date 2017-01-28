@@ -119,6 +119,7 @@ typedef struct
     SDL_Texture     *texture_tracker;
 
     JPlayerGUIButtonState   buttonState;    /* Which button, if any, is down */
+    int                     seekerEngaged;  /* Is the user moving the seeker */
 }
 JPlayerGUI;
 
