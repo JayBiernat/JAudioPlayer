@@ -439,7 +439,7 @@ JPlayerGUICursorSate JPlayerGUIGetCursorState( void )
         return CURSOR_ON_PAUSE_BUTTON;
     else if( x >= 250 && x < 300 && y >= 125 && y < 175 )
         return CURSOR_ON_STOP_BUTTON;
-    else if( x >= 49 && x < 349 && y >= 96 && y < 102 )
+    else if( x >= 44 && x < 356 && y >= 94 && y < 106 )
         return CURSOR_ON_TRACK;
     else
         return CURSOR_ON_BACKGROUND;

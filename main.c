@@ -113,6 +113,8 @@ int main( int argc, char* argv[] )
         {
             int x;
             SDL_GetMouseState( &x, NULL );
+            x = ( x > 349 ? 349 : x );
+            x = ( x < 49 ? 49 : x );
             JPlayerGUIDraw( myPlayerGUI, (float)(x - 49) / 300.0 );
         }
         else
