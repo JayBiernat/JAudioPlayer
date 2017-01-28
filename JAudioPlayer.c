@@ -41,6 +41,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         free( audioPlayer );
         return NULL;
     }
+    audioPlayer->changeSeek = FALSE;
+    audioPlayer->seekFrames = 0;
 
     /* Set up audioBuffer */
     audioPlayer->audioBuffer.length_in_frames = FRAMES_PER_BLOCK * CIRCULAR_BUFFER_LENGTH_SCALING;
@@ -371,7 +373,7 @@ JPlayerGUI* JPlayerGUICreate( void )
 
 void JPlayerGUIDraw( JPlayerGUI *playerGUI, float audioCompletion )
 {
-    SDL_Rect TrackerPos = { 44, 94 + (int)(300.0 * audioCompletion), 13, 13 };
+    SDL_Rect TrackerPos = { 44 + (int)(300.0 * audioCompletion), 94, 13, 13 };
 
     SDL_RenderClear( playerGUI->renderer );
     SDL_RenderCopy( playerGUI->renderer, playerGUI->texture_background, NULL, NULL );
@@ -524,6 +526,7 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
             {
                 framesToProduce = MAX_PRODUCED_FRAMES - buffer->head;
                 framesReadFromFile = sf_readf_float( audioPlayer->sfPtr, buffer->bufferPtr + (buffer->head * channels), (sf_count_t)framesToProduce );
+                audioPlayer->seekFrames += framesReadFromFile;
 
                 if( framesReadFromFile < framesToProduce )  /* Check frames read from file, produce silence after end of file */
                 {
@@ -543,6 +546,7 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
             else
             {
                 framesReadFromFile = sf_readf_float( audioPlayer->sfPtr, buffer->bufferPtr + (buffer->head * channels), framesToProduce );
+                audioPlayer->seekFrames += framesReadFromFile;
 
                 if( framesReadFromFile < framesToProduce )  /* Check frames read from file, produce silence after end of file */
                 {

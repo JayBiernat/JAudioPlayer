@@ -82,6 +82,9 @@ typedef struct
     SF_INFO          sfInfo;
     SNDFILE         *sfPtr;
 
+    volatile unsigned long  seekFrames;
+    volatile int            changeSeek;
+
     /* Buffer producer thread variables */
     HANDLE          handle_Producer;
     unsigned        threadID_Producer;
@@ -124,6 +127,19 @@ void JAudioPlayerPause( JAudioPlayer *audioPlayer );
 
 /** @brief Stops the audio stream */
 void JAudioPlayerStop( JAudioPlayer *audioPlayer );
+
+/** @brief Sets the cursor within the data section of the opened audio file.
+  * A wrapper for libsndfile's sf_seek function needed to deal with the fact
+  * that we will need to change the cursor from the main thread while it is
+  * being used in the producer thread. Only returns when the producer thread
+  * has seen the request to change the seek cursor position and changes it.
+  * @param frames Offset of frames the cursor will be set to from the whence parameter
+  * @param whence One of the values SEEK_SET (from beginning of data) SEEK_CUR (from
+  * current location SEEK_END (fromt end of data)
+  * @return Return value from sf_seek, the number of offset frames from start of
+  * audio file the cursor is set to, or -1 on failure
+  */
+sf_count_t JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int whence );
 
 /** @brief Used to destroy JAudioPlayer initialized with JAudioPlayerCreate
   * @param audioPlayer Pointer to a pointer to a JAudioPlayer structure. Pointer to

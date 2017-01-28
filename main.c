@@ -83,9 +83,8 @@ int main( int argc, char* argv[] )
             }
             else if( event.type == SDL_QUIT )
                 bQuit = TRUE;
-
-            JPlayerGUIDraw( myPlayerGUI, 0.0 );
         }
+        JPlayerGUIDraw( myPlayerGUI, (float)myAudioPlayer->seekFrames / (float)myAudioPlayer->sfInfo.frames );
     }
 
     JPlayerGUIDestroy( &myPlayerGUI );
