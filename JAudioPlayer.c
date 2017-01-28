@@ -104,7 +104,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
                                                            0,
                                                            audioBufferProducer,
                                                            audioPlayer,
-                                                           0,
+                                                           CREATE_SUSPENDED,
                                                            &audioPlayer->threadID_Producer );
     if( audioPlayer->handle_Producer == 0 )
     {
@@ -131,6 +131,7 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
     switch( audioPlayer->state )
     {
         case JPLAYER_STOPPED:
+            while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
             err = Pa_StartStream( audioPlayer->stream );
             if( err != paNoError )
             {
@@ -142,6 +143,7 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
                 audioPlayer->state = JPLAYER_PLAYING;
             break;
         case JPLAYER_PAUSED:
+            while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
             audioPlayer->state = JPLAYER_PLAYING;
             break;
         case JPLAYER_PLAYING:
@@ -162,6 +164,7 @@ void JAudioPlayerPause( JAudioPlayer *audioPlayer )
         case JPLAYER_PAUSED:
             break;
         case JPLAYER_PLAYING:
+            SuspendThread( audioPlayer->handle_Producer );  /* Don't need producer thread running */
             audioPlayer->state = JPLAYER_PAUSED;
             break;
     }
@@ -188,11 +191,13 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
                 printf( "  Error: Pa_StopStream\n" );
                 printf( "  Error number: %d\n", err );
                 printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
+                return;
             }
             else
                 audioPlayer->state = JPLAYER_STOPPED;
 
             JAudioPlayerSeek( audioPlayer, 0, SEEK_SET );
+            SuspendThread( audioPlayer->handle_Producer );
             break;
     }
     return;
@@ -224,9 +229,10 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
     {
         case JPLAYER_PLAYING:   /* Fall through all cases */
         case JPLAYER_PAUSED:
-            JAudioPlayerStop( audioPlayer );
+            Pa_StopStream( audioPlayer->stream );
         case JPLAYER_STOPPED:
             Pa_CloseStream( audioPlayer->stream );
+            while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
             audioPlayer->bTimeToQuit = TRUE;
             WaitForSingleObject( audioPlayer->handle_Producer, 10000 );
             CloseHandle( audioPlayer->handle_Producer );
