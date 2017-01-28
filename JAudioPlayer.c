@@ -41,7 +41,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         free( audioPlayer );
         return NULL;
     }
-    audioPlayer->changeSeek = FALSE;
+    audioPlayer->seekerInfo.bChangeSeek = FALSE;
     audioPlayer->seekFrames = 0;
 
     /* Set up audioBuffer */
@@ -191,7 +191,24 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
             }
             else
                 audioPlayer->state = JPLAYER_STOPPED;
+
+            JAudioPlayerSeek( audioPlayer, 0, SEEK_SET );
+            break;
     }
+    return;
+}
+
+
+inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int whence )
+{
+    audioPlayer->seekerInfo.frames = frames;
+    audioPlayer->seekerInfo.whence = whence;
+
+    /* Wait for producer thread to signal seek cursor has been changed in audio
+     * file by setting changeSeek back to FALSE */
+    audioPlayer->seekerInfo.bChangeSeek = TRUE;
+    while( audioPlayer->seekerInfo.bChangeSeek );
+
     return;
 }
 
@@ -512,6 +529,7 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
 {
     JAudioPlayer    *audioPlayer = (JAudioPlayer*)threadArg;
     JCircularBuffer *buffer = &audioPlayer->audioBuffer;
+    JChangeSeekInfo *seekerInfo = &audioPlayer->seekerInfo;
     const int       channels = audioPlayer->sfInfo.channels;
 
     const unsigned  MAX_PRODUCED_FRAMES = buffer->length_in_frames;
@@ -519,6 +537,16 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
 
     while( !audioPlayer->bTimeToQuit )
     {
+        /* Reset seek cursor in audio file if needed */
+        if( seekerInfo->bChangeSeek )
+        {
+            sf_count_t frameOffset;
+            if( ( frameOffset = sf_seek( audioPlayer->sfPtr, seekerInfo->frames, seekerInfo->whence ) ) >= 0 )
+                audioPlayer->seekFrames = frameOffset;
+
+            seekerInfo->bChangeSeek = FALSE;
+        }
+
         if( buffer->availableFrames < MAX_PRODUCED_FRAMES )
         {
             unsigned framesToProduce = ( MAX_PRODUCED_FRAMES - buffer->availableFrames );
