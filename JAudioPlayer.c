@@ -205,7 +205,16 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
     /* Wait for producer thread to signal seek cursor has been changed in audio
      * file by setting changeSeek back to FALSE */
     audioPlayer->seekerInfo.bChangeSeek = TRUE;
+
+    /* Must wake producer thread to process seek change in file if player is paused
+     * or stopped */
+    if( ( audioPlayer->state == JPLAYER_STOPPED ) ||
+        ( audioPlayer->state == JPLAYER_PAUSED ) )
+        while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
+
     while( audioPlayer->seekerInfo.bChangeSeek );
+
+    SuspendThread( audioPlayer->handle_Producer );
 
     return;
 }
