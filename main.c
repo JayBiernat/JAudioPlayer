@@ -15,6 +15,7 @@
 #include <SDL.h>
 
 #include "JAudioPlayer.h"
+#include "JPlayerGUI.h"
 
 int main( int argc, char* argv[] )
 {
