@@ -23,6 +23,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
     audioPlayer = (JAudioPlayer*)malloc( sizeof(JAudioPlayer) );
     if( audioPlayer == NULL )
         return NULL;
+    audioPlayer->audioBuffer.producerThreadEvents[0] = NULL;
+    audioPlayer->audioBuffer.producerThreadEvents[1] = NULL;
 
     audioPlayer->bTimeToQuit = FALSE;
 
@@ -60,6 +62,30 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         }
     }
 
+    /* Set up signaling events */
+    audioPlayer->audioBuffer.producerThreadEvents[0] = CreateEvent( NULL, /* bManualReset = */ FALSE, /* bInitialState = */ TRUE, NULL );
+    if( audioPlayer->audioBuffer.producerThreadEvents[0] == NULL )
+    {
+        printf( "  Error: Cannot create signaling event\n" );
+        for( i=0; i<MAX_BLOCKS; i++ )
+            free( audioPlayer->audioBuffer.blockPtrs[i] );
+        sf_close( audioPlayer->sfPtr );
+        free( audioPlayer );
+        return NULL;
+    }
+    audioPlayer->audioBuffer.producerThreadEvents[1] = CreateEvent( NULL, /* bManualReset = */ FALSE, /* bInitialState = */ FALSE, NULL );
+    if( audioPlayer->audioBuffer.producerThreadEvents[1] == NULL )
+    {
+        printf( "  Error: Cannot create signaling event\n" );
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[0] );
+        for( i=0; i<MAX_BLOCKS; i++ )
+            free( audioPlayer->audioBuffer.blockPtrs[i] );
+        sf_close( audioPlayer->sfPtr );
+        free( audioPlayer );
+        return NULL;
+        return NULL;
+    }
+
     /* Initialize PortAudio and set up output stream */
     err = Pa_Initialize();
     if( err != paNoError )
@@ -67,6 +93,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error: Pa_Initialize\n" );
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[0] );
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[1] );
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
@@ -95,6 +123,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         Pa_Terminate();
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[0] );
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[1] );
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
@@ -115,12 +145,15 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error creating producer thread\n" );
         Pa_CloseStream( audioPlayer->stream );
         Pa_Terminate();
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[0] );
+        CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[1] );
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
     }
+    SetThreadPriority( audioPlayer->handle_Producer, THREAD_PRIORITY_TIME_CRITICAL );
 
     return audioPlayer;
 }
@@ -215,6 +248,7 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
     audioPlayer->seekerInfo.whence = whence;
 
     audioPlayer->seekerInfo.bChangeSeek = TRUE;
+    SetEvent( audioPlayer->audioBuffer.producerThreadEvents[1] );
 
     /* Must wake producer thread to process seek change in file if player is paused
      * or stopped */
@@ -256,6 +290,8 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
             WaitForSingleObject( audioPlayer->handle_Producer, 10000 );
             CloseHandle( audioPlayer->handle_Producer );
             Pa_Terminate();
+            CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[0] );
+            CloseHandle( audioPlayer->audioBuffer.producerThreadEvents[1] );
             for( i=0; i<MAX_BLOCKS; i++ )
                 free( audioPlayer->audioBuffer.blockPtrs[i] );
             sf_close( audioPlayer->sfPtr );
@@ -303,7 +339,8 @@ int paCallback( const void                      *input,
         }
         __sync_fetch_and_sub( &buffer->availableBlocks, 1 );
         if( ++(buffer->tail) >= buffer->num_blocks_in_buffer )
-                buffer->tail = 0;
+            buffer->tail = 0;
+        SetEvent( buffer->producerThreadEvents[0] );
     }
 
     return paContinue;      /* return 0 */
@@ -318,9 +355,12 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
     const int       channels = audioPlayer->sfInfo.channels;
 
     sf_count_t      framesReadFromFile;
+    int             blocksNeeded, n;
 
     while( !audioPlayer->bTimeToQuit )
     {
+        WaitForMultipleObjects( 2, buffer->producerThreadEvents, /* bWaitAll = */ FALSE, 1000 );
+
         /* Reset seek cursor in audio file if needed */
         if( seekerInfo->bChangeSeek )
         {
@@ -331,9 +371,8 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
             seekerInfo->bChangeSeek = FALSE;
         }
 
-        //printf( "Available blocks: %u  Blocks in buffer: %u\n", buffer->availableBlocks, buffer->num_blocks_in_buffer );
-
-        if( buffer->availableBlocks < buffer->num_blocks_in_buffer )
+        blocksNeeded = buffer->num_blocks_in_buffer - buffer->availableBlocks;
+        for( n=0; n<blocksNeeded; n++ )
         {
             framesReadFromFile = sf_readf_float( audioPlayer->sfPtr,
                                                  buffer->blockPtrs[buffer->head],

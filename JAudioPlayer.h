@@ -37,6 +37,9 @@ typedef struct
     unsigned    tail;
     unsigned    num_blocks_in_buffer;
     volatile unsigned availableBlocks;  /* Blocks available for output */
+
+    HANDLE      producerThreadEvents[2];    /* First event to signal decrement of available blocks
+                                             * Second event to signal change in seeker position */
 }
 JCircularBuffer;
 
