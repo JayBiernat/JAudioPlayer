@@ -18,6 +18,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
 {
     JAudioPlayer *audioPlayer = NULL;
     PaError err;
+    int i;
 
     audioPlayer = (JAudioPlayer*)malloc( sizeof(JAudioPlayer) );
     if( audioPlayer == NULL )
@@ -38,17 +39,25 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
     audioPlayer->seekFrames = 0;
 
     /* Set up audioBuffer */
-    audioPlayer->audioBuffer.length_in_frames = FRAMES_PER_BLOCK * CIRCULAR_BUFFER_LENGTH_SCALING;
     audioPlayer->audioBuffer.head = 0;
     audioPlayer->audioBuffer.tail = 0;
-    audioPlayer->audioBuffer.availableFrames = 0;
-    audioPlayer->audioBuffer.bufferPtr = (float*)malloc( sizeof(float) * audioPlayer->audioBuffer.length_in_frames * audioPlayer->sfInfo.channels );
-    if( audioPlayer->audioBuffer.bufferPtr == NULL )
+    audioPlayer->audioBuffer.availableBlocks = 0;
+    audioPlayer->audioBuffer.num_blocks_in_buffer = MAX_BLOCKS;
+    for( i=0; i<MAX_BLOCKS; i++ )
+        audioPlayer->audioBuffer.blockPtrs[i] = NULL;
+
+    for( i=0; i<MAX_BLOCKS; i++ )
     {
-        printf( "  Error using malloc\n" );
-        sf_close( audioPlayer->sfPtr );
-        free( audioPlayer );
-        return NULL;
+        audioPlayer->audioBuffer.blockPtrs[i] = (float*)malloc( sizeof(float) * FRAMES_PER_BLOCK * audioPlayer->sfInfo.channels );
+        if( audioPlayer->audioBuffer.blockPtrs[i] == NULL )
+        {
+            printf( "  Error using malloc\n" );
+            for( i=0; i<MAX_BLOCKS; i++ )
+                free( audioPlayer->audioBuffer.blockPtrs[i] );
+            sf_close( audioPlayer->sfPtr );
+            free( audioPlayer );
+            return NULL;
+        }
     }
 
     /* Initialize PortAudio and set up output stream */
@@ -58,7 +67,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error: Pa_Initialize\n" );
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
-        free( audioPlayer->audioBuffer.bufferPtr );
+        for( i=0; i<MAX_BLOCKS; i++ )
+            free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
@@ -85,7 +95,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         Pa_Terminate();
-        free( audioPlayer->audioBuffer.bufferPtr );
+        for( i=0; i<MAX_BLOCKS; i++ )
+            free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
@@ -104,7 +115,8 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error creating producer thread\n" );
         Pa_CloseStream( audioPlayer->stream );
         Pa_Terminate();
-        free( audioPlayer->audioBuffer.bufferPtr );
+        for( i=0; i<MAX_BLOCKS; i++ )
+            free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
@@ -202,8 +214,6 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
     audioPlayer->seekerInfo.frames = frames;
     audioPlayer->seekerInfo.whence = whence;
 
-    /* Wait for producer thread to signal seek cursor has been changed in audio
-     * file by setting changeSeek back to FALSE */
     audioPlayer->seekerInfo.bChangeSeek = TRUE;
 
     /* Must wake producer thread to process seek change in file if player is paused
@@ -212,6 +222,8 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
         ( audioPlayer->state == JPLAYER_PAUSED ) )
         while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
 
+    /* Wait for producer thread to signal seek cursor has been changed in audio
+     * file by setting changeSeek back to FALSE */
     while( audioPlayer->seekerInfo.bChangeSeek );
 
     SuspendThread( audioPlayer->handle_Producer );
@@ -223,6 +235,7 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
 void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
 {
     JAudioPlayer *audioPlayer = *audioPlayerPtr;
+    int i;
 
     if( audioPlayer == NULL )
         return;
@@ -239,7 +252,8 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
             WaitForSingleObject( audioPlayer->handle_Producer, 10000 );
             CloseHandle( audioPlayer->handle_Producer );
             Pa_Terminate();
-            free( audioPlayer->audioBuffer.bufferPtr );
+            for( i=0; i<MAX_BLOCKS; i++ )
+                free( audioPlayer->audioBuffer.blockPtrs[i] );
             sf_close( audioPlayer->sfPtr );
             free( audioPlayer );
             *audioPlayerPtr = NULL;
@@ -262,7 +276,6 @@ int paCallback( const void                      *input,
     JCircularBuffer *buffer = &audioPlayer->audioBuffer;
 
     const int   channels = audioPlayer->sfInfo.channels;
-    unsigned    framesNeeded = FRAMES_PER_BLOCK;
     unsigned    i, j;
 
     if( audioPlayer->state == JPLAYER_PAUSED )
@@ -272,34 +285,25 @@ int paCallback( const void                      *input,
             for( j=0; j<channels; j++ )
                 *out++ = 0;
         }
-        return paContinue;
     }
-
-    while( framesNeeded > 0 )
+    else
     {
-        if( buffer->availableFrames > 0 )
+        while( buffer->availableBlocks < 1 );
+
+        for( i=0; i<FRAMES_PER_BLOCK; i++ )
         {
-            unsigned framesToConsume = buffer->availableFrames;
-            if( framesToConsume > framesNeeded )
-                framesToConsume = framesNeeded;
-            for( i=0; i<framesToConsume; i++ )
+            for( j=0; j<channels; j++ )
             {
-                for( j=0; j<channels; j++ )
-                {
-                    *out++ = *(buffer->bufferPtr + (buffer->tail * channels) + j);
-                }
-                buffer->tail++;
-                if( buffer->tail >= buffer->length_in_frames )
-                    buffer->tail = 0;
-                __sync_fetch_and_sub( &buffer->availableFrames, 1 );
+                *out++ = *( buffer->blockPtrs[buffer->tail] + (i * channels) + j );
             }
-            framesNeeded -= framesToConsume;
         }
+        __sync_fetch_and_sub( &buffer->availableBlocks, 1 );
+        if( ++(buffer->tail) >= buffer->num_blocks_in_buffer )
+                buffer->tail = 0;
     }
 
     return paContinue;      /* return 0 */
 }
-
 
 
 /** For now just produce a sine wave for the audio player to play, eventually
@@ -312,7 +316,6 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
     JChangeSeekInfo *seekerInfo = &audioPlayer->seekerInfo;
     const int       channels = audioPlayer->sfInfo.channels;
 
-    const unsigned  MAX_PRODUCED_FRAMES = buffer->length_in_frames;
     sf_count_t      framesReadFromFile;
 
     while( !audioPlayer->bTimeToQuit )
@@ -327,52 +330,30 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
             seekerInfo->bChangeSeek = FALSE;
         }
 
-        if( buffer->availableFrames < MAX_PRODUCED_FRAMES )
+        //printf( "Available blocks: %u  Blocks in buffer: %u\n", buffer->availableBlocks, buffer->num_blocks_in_buffer );
+
+        if( buffer->availableBlocks < buffer->num_blocks_in_buffer )
         {
-            unsigned framesToProduce = ( MAX_PRODUCED_FRAMES - buffer->availableFrames );
-            if( buffer->head + framesToProduce > MAX_PRODUCED_FRAMES )
+            framesReadFromFile = sf_readf_float( audioPlayer->sfPtr,
+                                                 buffer->blockPtrs[buffer->head],
+                                                 FRAMES_PER_BLOCK );
+            audioPlayer->seekFrames += framesReadFromFile;
+
+            if( framesReadFromFile < FRAMES_PER_BLOCK )  /* Check frames read from file, produce silence after end of file */
             {
-                framesToProduce = MAX_PRODUCED_FRAMES - buffer->head;
-                framesReadFromFile = sf_readf_float( audioPlayer->sfPtr, buffer->bufferPtr + (buffer->head * channels), (sf_count_t)framesToProduce );
-                audioPlayer->seekFrames += framesReadFromFile;
+                unsigned    silentFramesToProduce = FRAMES_PER_BLOCK - framesReadFromFile;
+                float       *ptr = buffer->blockPtrs[buffer->head] + ( framesReadFromFile * channels );
+                unsigned    i, j;
 
-                if( framesReadFromFile < framesToProduce )  /* Check frames read from file, produce silence after end of file */
+                for( i=0; i<silentFramesToProduce; i++ )
                 {
-                    unsigned    silentFramesToProduce = framesToProduce - framesReadFromFile;
-                    float       *ptr = buffer->bufferPtr + (buffer->head + framesReadFromFile) * channels;
-                    unsigned    i, j;
-
-                    for( i=0; i<silentFramesToProduce; i++ )
-                    {
-                        for( j=0; j<channels; j++ )
-                            *ptr++ = 0;
-                    }
+                    for( j=0; j<channels; j++ )
+                        *ptr++ = 0;
                 }
-                __sync_fetch_and_add( &(buffer->availableFrames), framesToProduce );  /* Protect against race condition with atomic operation */
+            }
+            __sync_fetch_and_add( &(buffer->availableBlocks), 1 );  /* Protect against race condition with atomic operation */
+            if( ++(buffer->head) >= buffer->num_blocks_in_buffer )
                 buffer->head = 0;
-            }
-            else
-            {
-                framesReadFromFile = sf_readf_float( audioPlayer->sfPtr, buffer->bufferPtr + (buffer->head * channels), framesToProduce );
-                audioPlayer->seekFrames += framesReadFromFile;
-
-                if( framesReadFromFile < framesToProduce )  /* Check frames read from file, produce silence after end of file */
-                {
-                    unsigned    silentFramesToProduce = framesToProduce - framesReadFromFile;
-                    float       *ptr = buffer->bufferPtr + (buffer->head + framesReadFromFile) * channels;
-                    unsigned    i, j;
-
-                    for( i=0; i<silentFramesToProduce; i++ )
-                    {
-                        for( j=0; j<channels; j++ )
-                            *ptr++ = 0;
-                    }
-                }
-                __sync_fetch_and_add( &(buffer->availableFrames), framesToProduce );  /* Protect against race condition with atomic operation */
-                buffer->head += framesToProduce;
-                if( buffer->head >= MAX_PRODUCED_FRAMES )
-                    buffer->head = 0;
-            }
         }
     }
 

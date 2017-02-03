@@ -18,7 +18,7 @@
 #endif
 
 #define FRAMES_PER_BLOCK 256
-#define CIRCULAR_BUFFER_LENGTH_SCALING 3
+#define MAX_BLOCKS 4
 
 /** State of the audio player - specifically what the state of the PaStream is */
 typedef enum
@@ -32,11 +32,11 @@ JPlayerState;
 /** Buffer used to transfer audio from file to output stream */
 typedef struct
 {
-    float       *bufferPtr;
-    unsigned    head;       /* Track position of head and tail in frames */
+    float       *blockPtrs[MAX_BLOCKS];
+    unsigned    head;       /* Track position of head and tail in blocks */
     unsigned    tail;
-    unsigned    length_in_frames;
-    volatile unsigned availableFrames;  /* Frames available for output */
+    unsigned    num_blocks_in_buffer;
+    volatile unsigned availableBlocks;  /* Blocks available for output */
 }
 JCircularBuffer;
 
