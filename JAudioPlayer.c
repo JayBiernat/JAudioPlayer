@@ -306,9 +306,6 @@ int paCallback( const void                      *input,
 }
 
 
-/** For now just produce a sine wave for the audio player to play, eventually
-  * will read from audio files
-  */
 unsigned int __stdcall audioBufferProducer( void *threadArg )
 {
     JAudioPlayer    *audioPlayer = (JAudioPlayer*)threadArg;
