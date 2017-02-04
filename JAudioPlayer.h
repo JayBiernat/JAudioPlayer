@@ -51,8 +51,8 @@ typedef struct
     unsigned    num_blocks_in_buffer;
     volatile unsigned availableBlocks;  /* Blocks available for output */
 
-    HANDLE      producerThreadEvents[2];    /* First event to signal decrement of available blocks
-                                             * Second event to signal change in seeker position */
+    HANDLE      producerThreadEvent;    /* Event to signal that there is something
+                                             * to do in the producer thread */
 }
 JCircularBuffer;
 
