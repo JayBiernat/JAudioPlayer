@@ -30,12 +30,38 @@
 #include "JAudioPlayer.h"
 #include "JPlayerGUI.h"
 
+void printLicense( void )
+{
+    printf( "\n***********************************************************************\n\n"
+
+            "                            J Audio Player\n\n"
+
+            " Copyright (c) 2017 Jay Biernat\n\n"
+
+            " This program is free software: you can redistribute it and/or modify\n"
+            " it under the terms of the GNU Lesser General Public License as\n"
+            " published by the Free Software Foundation, either version 3 of the\n"
+            " License, or (at your option) any later version.\n\n"
+
+            " This program is distributed in the hope that it will be useful, but\n"
+            " WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+            " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU\n"
+            " Lesser General Public License for more details.\n\n"
+
+            "***********************************************************************\n\n" );
+    Sleep( 3000 );
+
+    return;
+}
+
 int main( int argc, char* argv[] )
 {
     JAudioPlayer    *myAudioPlayer;
     JPlayerGUI      *myPlayerGUI;
     SDL_Event       event;
     int             bQuit = FALSE;
+
+    printLicense();
 
     if( argc != 2 )
     {
@@ -62,8 +88,8 @@ int main( int argc, char* argv[] )
     }
 
     JAudioPlayerPlay( myAudioPlayer );
-    printf( "Audio Player Playing\n" );
-    printf( "  To quit, exit out of the J Audio Player window\n" );
+    printf( "Audio Player Playing\n\n" );
+    printf( "  To quit, exit out of the J Audio Player window\n\n" );
 
     while( !bQuit )
     {
