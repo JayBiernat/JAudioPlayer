@@ -1,7 +1,20 @@
-/* main.c
- * Author: Jay Biernat
+/* main.c Contains main routine of J Audio Player
+ * Copyright (c) 2017 Jay Biernat
  *
- * Contains main routine of JAudioPlayer
+ * This file is part of J Audio Player
+ *
+ * J Audio Player is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * J Audio Player is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with J Audio Player.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
