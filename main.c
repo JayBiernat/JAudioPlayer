@@ -24,7 +24,6 @@
 #include <process.h>
 #include <math.h>
 
-#include "portaudio.h"
 #include "SDL.h"
 
 #include "JAudioPlayer.h"
