@@ -137,7 +137,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
                                                            0,
                                                            audioBufferProducer,
                                                            audioPlayer,
-                                                           CREATE_SUSPENDED,
+                                                           0,
                                                            &audioPlayer->threadID_Producer );
     if( audioPlayer->handle_Producer == 0 )
     {
@@ -167,7 +167,6 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
     switch( audioPlayer->state )
     {
         case JPLAYER_STOPPED:
-            while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
             err = Pa_StartStream( audioPlayer->stream );
             if( err != paNoError )
             {
@@ -179,7 +178,6 @@ void JAudioPlayerPlay( JAudioPlayer *audioPlayer )
                 audioPlayer->state = JPLAYER_PLAYING;
             break;
         case JPLAYER_PAUSED:
-            while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
             audioPlayer->state = JPLAYER_PLAYING;
             break;
         case JPLAYER_PLAYING:
@@ -200,7 +198,6 @@ void JAudioPlayerPause( JAudioPlayer *audioPlayer )
         case JPLAYER_PAUSED:
             break;
         case JPLAYER_PLAYING:
-            SuspendThread( audioPlayer->handle_Producer );  /* Don't need producer thread running */
             audioPlayer->state = JPLAYER_PAUSED;
             break;
     }
@@ -233,7 +230,6 @@ void JAudioPlayerStop( JAudioPlayer *audioPlayer )
                 audioPlayer->state = JPLAYER_STOPPED;
 
             JAudioPlayerSeek( audioPlayer, 0, SEEK_SET );
-            SuspendThread( audioPlayer->handle_Producer );
             break;
     }
     return;
@@ -248,21 +244,9 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
     audioPlayer->seekerInfo.bChangeSeek = TRUE;
     SetEvent( audioPlayer->audioBuffer.producerThreadEvent );
 
-    /* Must wake producer thread to process seek change in file if player is paused
-     * or stopped */
-    if( ( audioPlayer->state == JPLAYER_STOPPED ) ||
-        ( audioPlayer->state == JPLAYER_PAUSED ) )
-    {
-        while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
-        while( audioPlayer->seekerInfo.bChangeSeek );
-        SuspendThread( audioPlayer->handle_Producer );
-    }
-    else
-    {
-        /* Wait for producer thread to signal seek cursor has been changed in audio
-         * file by setting changeSeek back to FALSE */
-        while( audioPlayer->seekerInfo.bChangeSeek );
-    }
+    /* Wait for producer thread to signal seek cursor has been changed in audio
+     * file by setting changeSeek back to FALSE */
+    while( audioPlayer->seekerInfo.bChangeSeek );
 
     return;
 }
@@ -283,7 +267,6 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
             Pa_StopStream( audioPlayer->stream );
         case JPLAYER_STOPPED:
             Pa_CloseStream( audioPlayer->stream );
-            while( ResumeThread( audioPlayer->handle_Producer ) > 1 );
             audioPlayer->bTimeToQuit = TRUE;
             WaitForSingleObject( audioPlayer->handle_Producer, 10000 );
             CloseHandle( audioPlayer->handle_Producer );
