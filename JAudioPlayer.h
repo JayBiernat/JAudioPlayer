@@ -21,8 +21,7 @@
 #ifndef JAUDIOPLAYER_H_INCLUDED
 #define JAUDIOPLAYER_H_INCLUDED
 
-#include <SDL.h>
-#include <portaudio.h>
+#include "portaudio.h"
 #include "sndfile.h"
 
 #ifndef TRUE

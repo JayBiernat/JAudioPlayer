@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <SDL.h>
+#include "SDL.h"
 #include "JPlayerGUI.h"
 
 const SDL_Rect ButtonUnpressed = { 0, 0, 50, 50 };

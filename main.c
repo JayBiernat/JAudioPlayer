@@ -24,8 +24,8 @@
 #include <process.h>
 #include <math.h>
 
-#include <portaudio.h>
-#include <SDL.h>
+#include "portaudio.h"
+#include "SDL.h"
 
 #include "JAudioPlayer.h"
 #include "JPlayerGUI.h"

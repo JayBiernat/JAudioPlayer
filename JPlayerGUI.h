@@ -21,7 +21,7 @@
 #ifndef JPLAYERGUI_H_INCLUDED
 #define JPLAYERGUI_H_INCLUDED
 
-#include <SDL.h>
+#include "SDL.h"
 
 #ifndef TRUE
 #define TRUE 1

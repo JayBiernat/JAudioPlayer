@@ -24,7 +24,7 @@
 #include <windows.h>
 #include <process.h>
 
-#include <portaudio.h>
+#include "portaudio.h"
 #include "sndfile.h"
 #include "JAudioPlayer.h"
 
