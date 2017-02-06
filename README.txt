@@ -21,3 +21,6 @@ found within the 'license' directory.
 The release of this program is distributed with pre-compiled
 binaries.  Information on compiling from the source can be
 found in the file 'COMPILING.txt'
+
+TODO: Add information about ability to compile on windows
+and Linux

@@ -27,3 +27,6 @@ gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\lib
 gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c main.c main.o
 
 gcc -Wall -L"Path\to\SDL\library" -I"Path\to\portaudio\library" -I"Path\to\libsndfile\library" -o JAudioPlayer.exe main.o JAudioPlayer.o JPlayerGUI.o -lportaudio -lmingw32 -lSDL2main -lSDL2 -lsndfile-1 -s
+
+TODO:  Add information about compiling on Linux, add
+a makefile?
