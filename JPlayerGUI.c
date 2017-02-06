@@ -33,11 +33,19 @@ const SDL_Rect PauseButtonPos = { 175, 125, 50, 50 };
 JPlayerGUI* JPlayerGUICreate( void )
 {
     JPlayerGUI  *playerGUI = NULL;
+#ifdef WIN32
     const char  backgroundPath[] = "assets\\PlayerBackground.bmp";
     const char  playButtonPath[] = "assets\\PlayButton.bmp";
     const char  stopButtonPath[] = "assets\\StopButton.bmp";
     const char  pauseButtonPath[] = "assets\\PauseButton.bmp";
     const char  timeTrackerPath[] = "assets\\TimeTracker.bmp";
+#else
+    const char  backgroundPath[] = "assets/PlayerBackground.bmp";
+    const char  playButtonPath[] = "assets/PlayButton.bmp";
+    const char  stopButtonPath[] = "assets/StopButton.bmp";
+    const char  pauseButtonPath[] = "assets/PauseButton.bmp";
+    const char  timeTrackerPath[] = "assets/TimeTracker.bmp";
+#endif
 
     SDL_Surface *BMPSurface = NULL;        /* Loaded BMP image */
     SDL_Rect    trackerPos = { 44, 94, 13, 13 };

@@ -21,12 +21,27 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifdef WIN32
 #include <windows.h>
 #include <process.h>
+#else
+#include <pthread.h>
+#include <semaphore.h>
+#include <time.h>   // timespec
+#endif
 
 #include "portaudio.h"
 #include "sndfile.h"
 #include "JAudioPlayer.h"
+
+#ifdef WIN32
+#define CLOSE_SYNCHRONIZATION_OBJECT CloseHandle( audioPlayer->audioBuffer.producerThreadEvent );
+#define SIGNAL_SYNCHRONIZATION_OBJECT SetEvent( audioPlayer->audioBuffer.producerThreadEvent );
+#else
+#define CLOSE_SYNCHRONIZATION_OBJECT sem_destroy( &audioPlayer->audioBuffer.producerThreadSemaphore );
+#define SIGNAL_SYNCHRONIZATION_OBJECT sem_post( &audioPlayer->audioBuffer.producerThreadSemaphore );
+#endif
 
 JAudioPlayer* JAudioPlayerCreate( const char *filePath )
 {
@@ -37,7 +52,9 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
     audioPlayer = (JAudioPlayer*)malloc( sizeof(JAudioPlayer) );
     if( audioPlayer == NULL )
         return NULL;
+#ifdef WIN32
     audioPlayer->audioBuffer.producerThreadEvent = NULL;
+#endif
 
     audioPlayer->bTimeToQuit = FALSE;
 
@@ -75,11 +92,15 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         }
     }
 
-    /* Set up signaling event */
+    /* Set up signaling object */
+#ifdef WIN32
     audioPlayer->audioBuffer.producerThreadEvent = CreateEvent( NULL, /* bManualReset = */ FALSE, /* bInitialState = */ TRUE, NULL );
     if( audioPlayer->audioBuffer.producerThreadEvent == NULL )
+#else
+    if( sem_init( &audioPlayer->audioBuffer.producerThreadSemaphore, /* pshared = */ 0, /* value = */ 1 ) < 0 )
+#endif
     {
-        printf( "  Error: Cannot create signaling event\n" );
+        printf( "  Error: Cannot create synchronization object\n" );
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
@@ -94,7 +115,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error: Pa_Initialize\n" );
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
-        CloseHandle( audioPlayer->audioBuffer.producerThreadEvent );
+        CLOSE_SYNCHRONIZATION_OBJECT
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
@@ -123,7 +144,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
         printf( "  Error number: %d\n", err );
         printf( "  Error message: %s\n", Pa_GetErrorText( err ) );
         Pa_Terminate();
-        CloseHandle( audioPlayer->audioBuffer.producerThreadEvent );
+        CLOSE_SYNCHRONIZATION_OBJECT
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
@@ -133,6 +154,7 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
     audioPlayer->state = JPLAYER_STOPPED;
 
     /* Start producer thread */
+#ifdef WIN32
     audioPlayer->handle_Producer = (HANDLE)_beginthreadex( NULL,
                                                            0,
                                                            audioBufferProducer,
@@ -140,18 +162,23 @@ JAudioPlayer* JAudioPlayerCreate( const char *filePath )
                                                            0,
                                                            &audioPlayer->threadID_Producer );
     if( audioPlayer->handle_Producer == 0 )
+#else
+    if( pthread_create( &audioPlayer->threadID_Producer, NULL, audioBufferProducer, audioPlayer ) )
+#endif
     {
         printf( "  Error creating producer thread\n" );
         Pa_CloseStream( audioPlayer->stream );
         Pa_Terminate();
-        CloseHandle( audioPlayer->audioBuffer.producerThreadEvent );
+        CLOSE_SYNCHRONIZATION_OBJECT
         for( i=0; i<MAX_BLOCKS; i++ )
             free( audioPlayer->audioBuffer.blockPtrs[i] );
         sf_close( audioPlayer->sfPtr );
         free( audioPlayer );
         return NULL;
     }
+#ifdef WIN32
     SetThreadPriority( audioPlayer->handle_Producer, THREAD_PRIORITY_TIME_CRITICAL );
+#endif
 
     return audioPlayer;
 }
@@ -242,7 +269,7 @@ inline void JAudioPlayerSeek( JAudioPlayer *audioPlayer, sf_count_t frames, int 
     audioPlayer->seekerInfo.whence = whence;
 
     audioPlayer->seekerInfo.bChangeSeek = TRUE;
-    SetEvent( audioPlayer->audioBuffer.producerThreadEvent );
+    SIGNAL_SYNCHRONIZATION_OBJECT
 
     /* Wait for producer thread to signal seek cursor has been changed in audio
      * file by setting changeSeek back to FALSE */
@@ -268,10 +295,14 @@ void JAudioPlayerDestroy( JAudioPlayer **audioPlayerPtr )
         case JPLAYER_STOPPED:
             Pa_CloseStream( audioPlayer->stream );
             audioPlayer->bTimeToQuit = TRUE;
+#ifdef WIN32
             WaitForSingleObject( audioPlayer->handle_Producer, 10000 );
-            CloseHandle( audioPlayer->handle_Producer );
+            CloseHandle( audioPlayer->handle_Produer );
+#else
+            pthread_join( audioPlayer->threadID_Producer, NULL );
+#endif
             Pa_Terminate();
-            CloseHandle( audioPlayer->audioBuffer.producerThreadEvent );
+            CLOSE_SYNCHRONIZATION_OBJECT
             for( i=0; i<MAX_BLOCKS; i++ )
                 free( audioPlayer->audioBuffer.blockPtrs[i] );
             sf_close( audioPlayer->sfPtr );
@@ -320,14 +351,14 @@ int paCallback( const void                      *input,
         __sync_fetch_and_sub( &buffer->availableBlocks, 1 );
         if( ++(buffer->tail) >= buffer->num_blocks_in_buffer )
             buffer->tail = 0;
-        SetEvent( buffer->producerThreadEvent );
+        SIGNAL_SYNCHRONIZATION_OBJECT
     }
 
     return paContinue;      /* return 0 */
 }
 
 
-unsigned int __stdcall audioBufferProducer( void *threadArg )
+THREAD_ROUTINE_SIGNATURE audioBufferProducer( void *threadArg )
 {
     JAudioPlayer    *audioPlayer = (JAudioPlayer*)threadArg;
     JCircularBuffer *buffer = &audioPlayer->audioBuffer;
@@ -339,7 +370,12 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
 
     while( !audioPlayer->bTimeToQuit )
     {
+#ifdef WIN32
         WaitForSingleObject( buffer->producerThreadEvent, 1000 );
+#else
+        static struct timespec waitTime = { 1, 0 };
+        sem_timedwait( &buffer->producerThreadSemaphore, &waitTime );
+#endif
 
         /* Reset seek cursor in audio file if needed */
         if( seekerInfo->bChangeSeek )
@@ -376,7 +412,8 @@ unsigned int __stdcall audioBufferProducer( void *threadArg )
                 buffer->head = 0;
         }
     }
-
+#ifdef WIN32
     _endthreadex( 0 );
+#endif
     return 0;
 }

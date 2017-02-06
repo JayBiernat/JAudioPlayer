@@ -20,9 +20,13 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <windows.h>
-#include <process.h>
 #include <math.h>
+
+#ifdef WIN32
+#include <Windows.h> // Sleep
+#else
+#include <unistd.h> // sleep
+#endif
 
 #include "SDL.h"
 
@@ -48,7 +52,11 @@ void printLicense( void )
             " Lesser General Public License for more details.\n\n"
 
             "***********************************************************************\n\n" );
+#ifdef WIN32
     Sleep( 3000 );
+#else
+    sleep( 3 );
+#endif
 
     return;
 }

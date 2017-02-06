@@ -21,6 +21,13 @@
 #ifndef JAUDIOPLAYER_H_INCLUDED
 #define JAUDIOPLAYER_H_INCLUDED
 
+#ifdef WIN32
+#include <Windows.h>
+#else
+#include <pthread.h>
+#include <semaphore.h>
+#endif
+
 #include "portaudio.h"
 #include "sndfile.h"
 
@@ -31,6 +38,12 @@
 
 #define FRAMES_PER_BLOCK 256
 #define MAX_BLOCKS 4
+
+#ifdef WIN32
+#define THREAD_ROUTINE_SIGNATURE unsigned int __stdcall
+#else
+#define THREAD_ROUTINE_SIGNATURE void*
+#endif
 
 /** State of the audio player - specifically what the state of the PaStream is */
 typedef enum
@@ -50,8 +63,12 @@ typedef struct
     unsigned    num_blocks_in_buffer;
     volatile unsigned availableBlocks;  /* Blocks available for output */
 
+#ifdef WIN32
     HANDLE      producerThreadEvent;    /* Event to signal that there is something
                                              * to do in the producer thread */
+#else
+    sem_t       producerThreadSemaphore;
+#endif
 }
 JCircularBuffer;
 
@@ -87,8 +104,13 @@ typedef struct
     JChangeSeekInfo     seekerInfo;
 
     /* Buffer producer thread variables */
+#ifdef WIN32
     HANDLE          handle_Producer;
     unsigned        threadID_Producer;
+#else
+    pthread_t       threadID_Producer;
+#endif
+
     volatile int    bTimeToQuit;        /* Flag signal time for thread shutdown */
 
     JCircularBuffer audioBuffer;
@@ -135,6 +157,6 @@ int paCallback( const void *input,
                 void *userData );
 
 /** @brief Routine for audio producer thread */
-unsigned int __stdcall audioBufferProducer( void *threadArg );
+THREAD_ROUTINE_SIGNATURE audioBufferProducer( void *threadArg );
 
 #endif // JAUDIOPLAYER_H_INCLUDED
