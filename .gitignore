@@ -7,5 +7,8 @@
 bin/
 obj/
 
-#ignore DLLs
+#Ignore DLLs
 *.dll
+
+#Ignore unix temp files
+*~
