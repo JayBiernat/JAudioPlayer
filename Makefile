@@ -8,17 +8,16 @@ CC = gcc
 CFLAGS = -Wall -O2
 DEPS = JAudioPlayer.h JPlayerGUI.h
 ODIR = obj
-SDL_IDIR = /usr/include/SDL2
 _OBJ = JPlayerGUI.o JAudioPlayer.o main.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 LIBS = -lportaudio -lsndfile -lSDL2 -lpthread
-OUT_EXE = JAudioPlayer
+OUT_EXE = bin/JAudioPlayer
 
 $(ODIR)/%.o: %.c $(DEPS)
-	$(CC) $(CFLAGS) -I$(SDL_IDIR) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-build: $(OBJ)
-	$(CC) -Wall -o bin/$(OUT_EXE) $^ $(LIBS) -s
+build: clean $(OBJ)
+	$(CC) -Wall -o $(OUT_EXE) $(OBJ) $(LIBS) -s
 
 clean:
-	rm $(ODIR)/*.o
+	rm -f $(ODIR)/*.o $(OUT_EXE)
