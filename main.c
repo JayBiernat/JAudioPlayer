@@ -28,12 +28,6 @@
 #include <unistd.h> // sleep
 #endif
 
-#ifdef WIN32
-#include "SDL.h"
-#else
-#include "SDL2/SDL.h"
-#endif
-
 #include "JAudioPlayer.h"
 #include "JPlayerGUI.h"
 

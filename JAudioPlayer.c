@@ -31,8 +31,6 @@
 #include <time.h>   // timespec
 #endif
 
-#include "portaudio.h"
-#include "sndfile.h"
 #include "JAudioPlayer.h"
 
 #ifdef WIN32
