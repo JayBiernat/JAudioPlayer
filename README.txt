@@ -6,7 +6,7 @@ Contact: biernatjay@gmail.com
 
 A simple audio player created using the following libraries:
   - PortAudio for audio stream handling
-  - SDL for GUI creation
+  - SDL2 for GUI creation
   - libsndfile for audio file input
 
 Currently, the audio file to be played is specified as a
@@ -19,8 +19,5 @@ licenses of the libraries used by J Audio Player can be
 found within the 'license' directory.
 
 The release of this program is distributed with pre-compiled
-binaries.  Information on compiling from the source can be
-found in the file 'COMPILING.txt'
-
-TODO: Add information about ability to compile on windows
-and Linux
+binaries for Windows.  Information on compiling from source
+on Windows and Linux can be found in the file 'COMPILING.txt'

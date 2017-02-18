@@ -1,32 +1,45 @@
 Pre-compiled binaries available with the J Audio Player release were
 compiled with gcc version 4.8.1 (GCC) on Windows 7
 
-To compile on Windows, the following libraries need to be installed
+To compile from source, the following libraries need to be installed
 (the specified version or a version compatible with the specified major
 release).
+
+ **Note: If you are compiling J Audio Player on Windows, you will want
+   to download and link against the 32-bit versions of the libraries,
+   even if you are on a 64-bit machine.
 
   - PortAudio V19  (http://www.portaudio.com/download.html)
   - SDL v2.0.4  (https://www.libsdl.org/download-2.0.php)
   - libsndfile v1.0.27  (http://www.mega-nerd.com/libsndfile/#Download)
 
-*Note: Even if you are using a 64-bit machine, you will want to download
-and link against the 32-bit versions of the libraries.
-
-The source files for J Audio Player and assets can be downloaded from
+The source files and assets for J Audio Player can be downloaded from
 GitHub:
-  https://github.com/JayBiernat/JAudioPlayer
+  https://github.com/JayBiernat/JAudioPlayer/releases
 
-With the include and lib folders of the libraries added into gcc's search
+-----------------------------------------------------------------------
+
+COMPILING ON LINUX
+
+From the JAudioPlayer directory, run
+
+	make build
+
+-----------------------------------------------------------------------
+
+COMPILING ON WINDOWS
+
+Instructions provided here for compiling with GNU's GCC compiler via the
+command line.
+
+With the include and lib folders of the libraries added to gcc's search
 path or passed to the compiler with appropriate -I and -L flags, execute
 the following commands to compile:
 
-gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c JAudioPlayer.c JAudioPlayer.o
+gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c JAudioPlayer.c obj\JAudioPlayer.o
 
-gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c JPlayerGUI.c JPlayerGUI.o
+gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c JPlayerGUI.c obj\JPlayerGUI.o
 
-gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c main.c main.o
+gcc -Wall -O2 -I"Path\to\SDL\header" -I"Path\to\portaudio\header" -I"Path\to\libsndfile\header" -c main.c obj\main.o
 
-gcc -Wall -L"Path\to\SDL\library" -I"Path\to\portaudio\library" -I"Path\to\libsndfile\library" -o JAudioPlayer.exe main.o JAudioPlayer.o JPlayerGUI.o -lportaudio -lmingw32 -lSDL2main -lSDL2 -lsndfile-1 -s
-
-TODO:  Add information about compiling on Linux, add
-a makefile?
+gcc -Wall -L"Path\to\SDL\library" -L"Path\to\portaudio\library" -L"Path\to\libsndfile\library" -o bin\JAudioPlayer.exe obj\main.o obj\JAudioPlayer.o obj\JPlayerGUI.o -lportaudio -lmingw32 -lSDL2main -lSDL2 -lsndfile-1 -s
